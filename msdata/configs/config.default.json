@@ -1,0 +1,24 @@
+{
+  "main": {
+    "instance": "optima-bot",
+    "service": "optima-bot",
+    "port": 8000
+  },
+  "logger": {
+    "logLevel": "trace",
+    "logMode": "console"
+  },
+  "db": {
+    "postgres": {
+      "host": "localhost",
+      "port": 2002,
+      "user": "postgres",
+      "password": "amir",
+      "databases": "practice",
+      "schema": "main"
+    }
+  },
+  "telegram": {
+    "token": "7287138131:AAFvDMRl1wcPWyytDd31rKDTScCEMug_JLs"
+  }
+}
