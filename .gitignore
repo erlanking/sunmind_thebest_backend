@@ -43,6 +43,7 @@ lerna-debug.log*
 .env.local
 firebase-service-account.json
 CLAUDE.md
+firebase-service-account.json
 
 # temp directory
 .temp

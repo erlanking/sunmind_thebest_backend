@@ -139,8 +139,12 @@ tr:hover td{background:#1e2128}
 .b-warn{background:#3f2010;color:#fb923c}
 .del-btn{background:transparent;border:1px solid #3f1515;color:#f87171;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:11px}
 .del-btn:hover{background:#3f1515}
-input[type=email],input[type=password]{width:100%;padding:10px 14px;background:#0d0f14;border:1px solid #2a2d35;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:12px}
+input[type=email],input[type=password],input[type=text]{width:100%;padding:10px 14px;background:#0d0f14;border:1px solid #2a2d35;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:12px}
 input:focus{outline:none;border-color:#f6c343}
+.srv-btn{padding:6px 14px;border:1px solid #2a2d35;background:transparent;color:#858a95;border-radius:8px;cursor:pointer;font-size:13px;transition:all .15s}
+.srv-btn.active{border-color:#f6c343;color:#f6c343}
+.srv-btn:hover{border-color:#f6c343;color:#f6c343}
+.server-tag{font-size:11px;color:#858a95;padding:4px 10px;background:#1e2128;border-radius:6px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .btn-primary{width:100%;padding:12px;background:#f6c343;color:#0d0f14;border:none;border-radius:8px;font-weight:700;font-size:15px;cursor:pointer}
 .btn-primary:hover{background:#e5b332}
 .err{color:#f87171;font-size:13px;margin-top:8px;text-align:center}
@@ -187,6 +191,14 @@ input:focus{outline:none;border-color:#f6c343}
   <div class="login-card">
     <h1>SunMind Admin</h1>
     <p>Панель управления продуктом</p>
+    <div style="margin-bottom:4px">
+      <div style="font-size:11px;color:#858a95;font-weight:600;text-transform:uppercase;margin-bottom:8px">Сервер</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <button type="button" class="srv-btn active" id="btnProd" onclick="selectServer(this,'https://sunmind-api.softjol.site')">Продакшн</button>
+        <button type="button" class="srv-btn" id="btnLocal" onclick="selectServer(this,'http://localhost:5001')">Локальный</button>
+      </div>
+      <input type="text" id="serverUrl" placeholder="https://sunmind-api.softjol.site">
+    </div>
     <input type="email" id="email" placeholder="Email администратора">
     <input type="password" id="password" placeholder="Пароль">
     <button class="btn-primary" onclick="doLogin()">Войти</button>
@@ -197,6 +209,7 @@ input:focus{outline:none;border-color:#f6c343}
 <div class="panel" id="panel">
   <div class="topbar">
     <span class="logo">SunMind Admin</span>
+    <span class="server-tag" id="serverLabel"></span>
     <button onclick="logout()">Выйти</button>
   </div>
   <div class="content">
@@ -231,15 +244,37 @@ input:focus{outline:none;border-color:#f6c343}
 </div>
 
 <script>
+let BASE_URL = localStorage.getItem('admin_server') || 'https://sunmind-api.softjol.site';
 let token = localStorage.getItem('admin_token');
+
+function selectServer(btn, url) {
+  document.querySelectorAll('.srv-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('serverUrl').value = url;
+}
+
+(function initServerInput() {
+  const inp = document.getElementById('serverUrl');
+  if (inp) {
+    inp.value = BASE_URL;
+    if (BASE_URL === 'http://localhost:5001') {
+      document.getElementById('btnLocal')?.classList.add('active');
+      document.getElementById('btnProd')?.classList.remove('active');
+    }
+  }
+})();
+
 if (token) showPanel();
 
 async function doLogin() {
+  const raw = document.getElementById('serverUrl').value.trim();
+  BASE_URL = (raw || 'https://sunmind-api.softjol.site').replace(/\\/$/, '');
+  localStorage.setItem('admin_server', BASE_URL);
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
   document.getElementById('loginErr').textContent = '';
   try {
-    const res = await fetch('/admin/login', {
+    const res = await fetch(BASE_URL + '/admin/login', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({email, password}),
@@ -249,12 +284,13 @@ async function doLogin() {
     localStorage.setItem('admin_token', data.token);
     token = data.token;
     showPanel();
-  } catch { document.getElementById('loginErr').textContent = 'Ошибка подключения'; }
+  } catch { document.getElementById('loginErr').textContent = 'Ошибка подключения к ' + BASE_URL; }
 }
 
 function showPanel() {
   document.getElementById('loginWrap').style.display = 'none';
   document.getElementById('panel').style.display = 'block';
+  document.getElementById('serverLabel').textContent = BASE_URL;
   loadStats(); loadDevices();
 }
 
@@ -273,7 +309,7 @@ function showTab(name) {
 }
 
 async function api(path) {
-  const res = await fetch(path, {headers: {Authorization: 'Bearer ' + token}});
+  const res = await fetch(BASE_URL + path, {headers: {Authorization: 'Bearer ' + token}});
   if (res.status === 401) { logout(); return null; }
   return res.json();
 }
@@ -371,13 +407,13 @@ async function loadUsers() {
 
 async function delDevice(deviceId) {
   if (!confirm('Удалить устройство ' + deviceId + '?')) return;
-  await fetch('/admin/devices/' + deviceId, {method:'DELETE', headers:{Authorization:'Bearer ' + token}});
+  await fetch(BASE_URL + '/admin/devices/' + deviceId, {method:'DELETE', headers:{Authorization:'Bearer ' + token}});
   loadDevices(); loadStats(); loadUnowned();
 }
 
 async function delUser(id, email) {
   if (!confirm('Удалить пользователя ' + email + '?\\nЭто удалит все его данные.')) return;
-  await fetch('/admin/users/' + id, {method:'DELETE', headers:{Authorization:'Bearer ' + token}});
+  await fetch(BASE_URL + '/admin/users/' + id, {method:'DELETE', headers:{Authorization:'Bearer ' + token}});
   loadUsers(); loadStats();
 }
 
@@ -420,7 +456,7 @@ async function sendNotify() {
   try {
     const body = { title, message };
     if (userId) body.userId = Number(userId);
-    const res = await fetch('/admin/notify', {
+    const res = await fetch(BASE_URL + '/admin/notify', {
       method: 'POST',
       headers: {'Content-Type':'application/json', Authorization: 'Bearer ' + token},
       body: JSON.stringify(body),
