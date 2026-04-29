@@ -71,6 +71,15 @@ export class AdminController {
   @UseGuards(AdminGuard)
   deleteDevice(@Param('deviceId') deviceId: string) { return this.adminService.deleteDevice(deviceId); }
 
+  @Post('devices/:deviceId/location')
+  @UseGuards(AdminGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Установить координаты устройства' })
+  setLocation(
+    @Param('deviceId') deviceId: string,
+    @Body() body: { latitude: number; longitude: number },
+  ) { return this.adminService.setDeviceLocation(deviceId, body.latitude, body.longitude); }
+
   @Get('unowned')
   @UseGuards(AdminGuard)
   getUnowned() { return this.adminService.getUnownedDevices(); }
@@ -184,6 +193,26 @@ input:focus{outline:none;border-color:#f6c343}
 .notify-result.err{background:#3f1515;color:#f87171}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+#mapContainer{height:520px;border-radius:12px;overflow:hidden;border:1px solid #2a2d35}
+.map-legend{display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap}
+.map-legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:#858a95}
+.map-legend-dot{width:12px;height:12px;border-radius:50%}
+.loc-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center}
+.loc-modal.open{display:flex}
+.loc-card{background:#171a1f;border:1px solid #2a2d35;border-radius:16px;padding:28px;width:380px;max-width:95vw}
+.loc-card h3{font-size:16px;font-weight:700;color:#f6c343;margin-bottom:18px}
+.loc-card label{display:block;font-size:11px;color:#858a95;text-transform:uppercase;font-weight:600;margin-bottom:5px;margin-top:12px}
+.loc-card input{width:100%;padding:9px 12px;background:#0d0f14;border:1px solid #2a2d35;border-radius:8px;color:#e2e8f0;font-size:14px}
+.loc-card input:focus{outline:none;border-color:#f6c343}
+.loc-actions{display:flex;gap:10px;margin-top:20px}
+.loc-save{flex:1;padding:11px;background:#f6c343;color:#0d0f14;border:none;border-radius:8px;font-weight:700;cursor:pointer}
+.loc-save:hover{background:#e5b332}
+.loc-cancel{flex:1;padding:11px;background:transparent;color:#858a95;border:1px solid #2a2d35;border-radius:8px;cursor:pointer}
+.loc-cancel:hover{border-color:#f6c343;color:#f6c343}
+</style>
 </head>
 <body>
 
@@ -194,10 +223,10 @@ input:focus{outline:none;border-color:#f6c343}
     <div style="margin-bottom:4px">
       <div style="font-size:11px;color:#858a95;font-weight:600;text-transform:uppercase;margin-bottom:8px">Сервер</div>
       <div style="display:flex;gap:8px;margin-bottom:8px">
-        <button type="button" class="srv-btn active" id="btnProd" onclick="selectServer(this,'https://sunmind-api.softjol.site')">Продакшн</button>
+        <button type="button" class="srv-btn active" id="btnProd" onclick="selectServer(this,'https://sunmindthebestbackend-production.up.railway.app')">Продакшн</button>
         <button type="button" class="srv-btn" id="btnLocal" onclick="selectServer(this,'http://localhost:5001')">Локальный</button>
       </div>
-      <input type="text" id="serverUrl" placeholder="https://sunmind-api.softjol.site">
+      <input type="text" id="serverUrl" placeholder="https://sunmindthebestbackend-production.up.railway.app">
     </div>
     <input type="email" id="email" placeholder="Email администратора">
     <input type="password" id="password" placeholder="Пароль">
@@ -220,6 +249,7 @@ input:focus{outline:none;border-color:#f6c343}
       <button class="tab" onclick="showTab('users')">Пользователи</button>
       <button class="tab" onclick="showTab('analytics')">Аналитика</button>
       <button class="tab" onclick="showTab('notify')">Уведомления</button>
+      <button class="tab" onclick="showTab('map')">Карта</button>
     </div>
     <div class="section active" id="tab-devices">
       <button class="refresh-btn" onclick="loadDevices()">Обновить</button>
@@ -240,11 +270,36 @@ input:focus{outline:none;border-color:#f6c343}
     <div class="section" id="tab-notify">
       <div id="notifyWrap"></div>
     </div>
+    <div class="section" id="tab-map">
+      <button class="refresh-btn" onclick="loadMap()">Обновить карту</button>
+      <div class="map-legend">
+        <div class="map-legend-item"><div class="map-legend-dot" style="background:#4ade80"></div>Онлайн</div>
+        <div class="map-legend-item"><div class="map-legend-dot" style="background:#f87171"></div>Офлайн / Поломка</div>
+        <div class="map-legend-item"><div class="map-legend-dot" style="background:#858a95"></div>Без координат</div>
+      </div>
+      <div id="mapContainer"></div>
+      <p style="color:#858a95;font-size:12px;margin-top:10px">Нажмите на маркер, чтобы увидеть информацию. В таблице устройств нажмите «Координаты», чтобы задать местоположение.</p>
+    </div>
+  </div>
+</div>
+
+<div class="loc-modal" id="locModal">
+  <div class="loc-card">
+    <h3 id="locModalTitle">Координаты устройства</h3>
+    <label>Широта (Latitude)</label>
+    <input type="number" id="locLat" placeholder="42.8746" step="0.0001">
+    <label>Долгота (Longitude)</label>
+    <input type="number" id="locLng" placeholder="74.5698" step="0.0001">
+    <p style="font-size:11px;color:#858a95;margin-top:10px">Например, Бишкек: 42.8746, 74.5698</p>
+    <div class="loc-actions">
+      <button class="loc-cancel" onclick="closeLocModal()">Отмена</button>
+      <button class="loc-save" onclick="saveLocation()">Сохранить</button>
+    </div>
   </div>
 </div>
 
 <script>
-let BASE_URL = localStorage.getItem('admin_server') || 'https://sunmind-api.softjol.site';
+let BASE_URL = localStorage.getItem('admin_server') || 'https://sunmindthebestbackend-production.up.railway.app';
 let token = localStorage.getItem('admin_token');
 
 function selectServer(btn, url) {
@@ -257,7 +312,10 @@ function selectServer(btn, url) {
   const inp = document.getElementById('serverUrl');
   if (inp) {
     inp.value = BASE_URL;
-    if (BASE_URL === 'http://localhost:5001') {
+    if (BASE_URL === 'https://sunmindthebestbackend-production.up.railway.app') {
+      document.getElementById('btnProd')?.classList.add('active');
+      document.getElementById('btnLocal')?.classList.remove('active');
+    } else if (BASE_URL === 'http://localhost:5001') {
       document.getElementById('btnLocal')?.classList.add('active');
       document.getElementById('btnProd')?.classList.remove('active');
     }
@@ -268,7 +326,7 @@ if (token) showPanel();
 
 async function doLogin() {
   const raw = document.getElementById('serverUrl').value.trim();
-  BASE_URL = (raw || 'https://sunmind-api.softjol.site').replace(/\\/$/, '');
+  BASE_URL = (raw || 'https://sunmindthebestbackend-production.up.railway.app').replace(/\\/$/, '');
   localStorage.setItem('admin_server', BASE_URL);
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
@@ -306,6 +364,7 @@ function showTab(name) {
   if (name === 'unowned') loadUnowned();
   if (name === 'analytics') loadAnalytics();
   if (name === 'notify') initNotify();
+  if (name === 'map') loadMap();
 }
 
 async function api(path) {
@@ -362,7 +421,10 @@ async function loadDevices() {
       <td>\${d.lux !== null ? d.lux + ' lx' : '—'}</td>
       <td><span class="badge \${d.manualMode ? 'b-manual' : 'b-auto'}">\${d.manualMode ? 'Ручной' : 'Авто'}</span></td>
       <td>\${d.lastSeen ? new Date(d.lastSeen).toLocaleString('ru') : '—'}</td>
-      <td><button class="del-btn" onclick="delDevice('\${d.deviceId}')">Удалить</button></td>
+      <td style="display:flex;gap:6px">
+        <button class="del-btn" style="border-color:#1e3a5f;color:#60a5fa" onclick="openLocModal('\${d.deviceId}',\${JSON.stringify(d.name ?? d.deviceId)},\${d.latitude},\${d.longitude})">\${d.latitude != null ? '📍' : '＋'} Координаты</button>
+        <button class="del-btn" onclick="delDevice('\${d.deviceId}')">Удалить</button>
+      </td>
     </tr>\`).join('')}</tbody></table>\`;
 }
 
@@ -577,6 +639,106 @@ async function loadAnalytics() {
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// ── MAP ─────────────────────────────────────────────────────────────────────
+let mapInstance = null;
+
+async function loadMap() {
+  const data = await api('/admin/devices');
+  if (!data) return;
+
+  const container = document.getElementById('mapContainer');
+  if (!container) return;
+
+  // Destroy old map instance to avoid Leaflet errors on re-init
+  if (mapInstance) { mapInstance.remove(); mapInstance = null; }
+  container.innerHTML = '';
+
+  // Default center: Bishkek
+  let centerLat = 42.8746, centerLng = 74.5698;
+  const withCoords = data.filter(d => d.latitude != null && d.longitude != null);
+  if (withCoords.length > 0) {
+    centerLat = withCoords.reduce((s, d) => s + d.latitude, 0) / withCoords.length;
+    centerLng = withCoords.reduce((s, d) => s + d.longitude, 0) / withCoords.length;
+  }
+
+  mapInstance = L.map(container).setView([centerLat, centerLng], withCoords.length > 0 ? 10 : 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
+    maxZoom: 19,
+  }).addTo(mapInstance);
+
+  const greenIcon = L.divIcon({
+    className: '',
+    html: '<div style="width:16px;height:16px;background:#4ade80;border:2px solid #fff;border-radius:50%;box-shadow:0 0 6px rgba(74,222,128,.8)"></div>',
+    iconSize: [16, 16], iconAnchor: [8, 8], popupAnchor: [0, -10],
+  });
+  const redIcon = L.divIcon({
+    className: '',
+    html: '<div style="width:16px;height:16px;background:#f87171;border:2px solid #fff;border-radius:50%;box-shadow:0 0 6px rgba(248,113,113,.8)"></div>',
+    iconSize: [16, 16], iconAnchor: [8, 8], popupAnchor: [0, -10],
+  });
+
+  withCoords.forEach(d => {
+    const icon = d.online ? greenIcon : redIcon;
+    const lastSeen = d.lastSeen ? new Date(d.lastSeen).toLocaleString('ru') : '—';
+    const bat = d.batteryPercent != null ? d.batteryPercent + '%' : '—';
+    const status = d.online ? '<span style="color:#4ade80;font-weight:700">● Онлайн</span>' : '<span style="color:#f87171;font-weight:700">● Офлайн</span>';
+    const popup = \`
+      <div style="font-family:-apple-system,sans-serif;min-width:200px">
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">\${d.name || d.deviceId}</div>
+        <div style="font-size:12px;color:#555;margin-bottom:4px">ID: \${d.deviceId}</div>
+        <div style="font-size:12px;margin-bottom:2px">\${status}</div>
+        <div style="font-size:12px;color:#555">Батарея: \${bat}</div>
+        <div style="font-size:12px;color:#555">Яркость: \${d.brightness ?? '—'}</div>
+        <div style="font-size:12px;color:#555">Последняя связь: \${lastSeen}</div>
+      </div>
+    \`;
+    L.marker([d.latitude, d.longitude], { icon }).addTo(mapInstance).bindPopup(popup);
+  });
+
+  const noCoords = data.filter(d => d.latitude == null || d.longitude == null);
+  if (noCoords.length > 0) {
+    const list = noCoords.map(d => \`<b>\${d.deviceId}</b>\`).join(', ');
+    const info = L.control({ position: 'bottomleft' });
+    info.onAdd = () => {
+      const div = L.DomUtil.create('div');
+      div.style.cssText = 'background:rgba(23,26,31,.9);color:#858a95;font-size:11px;padding:8px 12px;border-radius:8px;max-width:280px;line-height:1.4';
+      div.innerHTML = \`Без координат (\${noCoords.length}): \${list}\`;
+      return div;
+    };
+    info.addTo(mapInstance);
+  }
+}
+
+// ── Location modal ───────────────────────────────────────────────────────────
+let locDeviceId = null;
+
+function openLocModal(deviceId, name, lat, lng) {
+  locDeviceId = deviceId;
+  document.getElementById('locModalTitle').textContent = 'Координаты: ' + (name || deviceId);
+  document.getElementById('locLat').value = lat ?? '';
+  document.getElementById('locLng').value = lng ?? '';
+  document.getElementById('locModal').classList.add('open');
+}
+
+function closeLocModal() {
+  document.getElementById('locModal').classList.remove('open');
+  locDeviceId = null;
+}
+
+async function saveLocation() {
+  const lat = parseFloat(document.getElementById('locLat').value);
+  const lng = parseFloat(document.getElementById('locLng').value);
+  if (!locDeviceId || isNaN(lat) || isNaN(lng)) { alert('Введите корректные координаты'); return; }
+  await fetch(BASE_URL + '/admin/devices/' + encodeURIComponent(locDeviceId) + '/location', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ latitude: lat, longitude: lng }),
+  });
+  closeLocModal();
+  loadDevices();
+}
 </script>
 </body>
 </html>`;

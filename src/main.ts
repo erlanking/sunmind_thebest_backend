@@ -4,11 +4,10 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import 'dotenv/config';
 
 async function start() {
-  const PORT = process.env.PORT || 5001;
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: '*', // ⚠️ для разработки
+    origin: '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
@@ -23,8 +22,15 @@ async function start() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  await app.listen(PORT, '0.0.0.0', () =>
-    console.log(`Server started ${PORT}`),
-  );
+  const port = process.env.PORT;
+
+  if (!port) {
+    throw new Error('PORT is not defined');
+  }
+
+  await app.listen(port, '0.0.0.0');
+
+  console.log(`Server started on port ${port}`);
 }
+
 start();

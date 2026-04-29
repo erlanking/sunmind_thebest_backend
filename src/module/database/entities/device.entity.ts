@@ -52,6 +52,12 @@ export class DeviceEntity {
   @Column({ name: 'last_seen', type: 'timestamptz', nullable: true })
   lastSeen?: Date;
 
+  @Column({ type: 'float', nullable: true })
+  latitude?: number | null;
+
+  @Column({ type: 'float', nullable: true })
+  longitude?: number | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

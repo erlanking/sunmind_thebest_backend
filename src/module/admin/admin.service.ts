@@ -134,7 +134,14 @@ export class AdminService {
       lux: d.lux != null ? Math.round(d.lux) : null,
       manualMode: d.manualMode,
       createdAt: d.createdAt,
+      latitude: d.latitude ?? null,
+      longitude: d.longitude ?? null,
     }));
+  }
+
+  async setDeviceLocation(deviceId: string, latitude: number, longitude: number) {
+    await this.devices.update({ deviceId }, { latitude, longitude });
+    return { success: true };
   }
 
   async deleteDevice(deviceId: string) {
