@@ -47,9 +47,14 @@ export class NotificationService {
   private async getAccessToken(): Promise<string | null> {
     const auth = this.getAuth();
     if (!auth) return null;
-    const client = await auth.getClient();
-    const tokenResponse = await client.getAccessToken();
-    return tokenResponse.token ?? null;
+    try {
+      const client = await auth.getClient();
+      const tokenResponse = await client.getAccessToken();
+      return tokenResponse.token ?? null;
+    } catch (err: any) {
+      this.logger.error(`Ошибка получения Firebase access token: ${err?.message ?? err}`);
+      return null;
+    }
   }
 
   async sendToToken(
@@ -60,7 +65,7 @@ export class NotificationService {
   ): Promise<boolean> {
     const accessToken = await this.getAccessToken();
     if (!accessToken) {
-      this.logger.warn('Firebase service account не настроен — уведомление не отправлено');
+      this.logger.warn('Firebase service account не настроен или недоступен — уведомление не отправлено');
       return false;
     }
 
