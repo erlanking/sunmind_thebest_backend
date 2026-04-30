@@ -21,6 +21,21 @@ export class NotificationService {
     const keyPath = this.configService.get<string>('FIREBASE_SERVICE_ACCOUNT_PATH');
     const keyJson = this.configService.get<string>('FIREBASE_SERVICE_ACCOUNT_JSON');
 
+    const keyBase64 = this.configService.get<string>('FIREBASE_SERVICE_ACCOUNT_BASE64');
+
+    if (keyBase64) {
+      try {
+        const credentials = JSON.parse(Buffer.from(keyBase64, 'base64').toString());
+        return new GoogleAuth({
+          credentials,
+          scopes: ['https://www.googleapis.com/auth/firebase.messaging'],
+        });
+      } catch {
+        this.logger.error('Ошибка парсинга FIREBASE_SERVICE_ACCOUNT_BASE64');
+        return null;
+      }
+    }
+
     if (keyJson) {
       try {
         const credentials = JSON.parse(keyJson);
