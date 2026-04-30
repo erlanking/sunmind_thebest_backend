@@ -61,6 +61,16 @@ export class DeviceDataDto {
   mode?: 'manual' | 'auto' | 'schedule';
 
   @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  latitude?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  longitude?: number | null;
+
+  @IsOptional()
   @Type(() => Date)
   createdAt?: Date;
 }

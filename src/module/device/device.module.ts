@@ -3,23 +3,34 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { DeviceEntity } from '../database/entities/device.entity';
 import { DeviceScheduleEntity } from '../database/entities/device-schedule.entity';
 import { DeviceTelemetryEntity } from '../database/entities/device-telemetry.entity';
+import { DeviceErrorEntity } from '../database/entities/device-error.entity';
+import { DeviceMaintenanceEntity } from '../database/entities/device-maintenance.entity';
 import { DeviceController } from './device.controller';
 import { DeviceService } from './device.service';
+import { DeviceAlertService } from './device-alert.service';
 import { ZoneModule } from '../zone/zone.module';
 import { UserModule } from '../user/user.module';
 import { AuthModule } from '../auth/auth.module';
 import { PubLedModule } from '../pubLed/pubLed.module';
+import { AdminModule } from '../admin/admin.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([DeviceEntity, DeviceScheduleEntity, DeviceTelemetryEntity]),
+    TypeOrmModule.forFeature([
+      DeviceEntity,
+      DeviceScheduleEntity,
+      DeviceTelemetryEntity,
+      DeviceErrorEntity,
+      DeviceMaintenanceEntity,
+    ]),
     forwardRef(() => ZoneModule),
     forwardRef(() => PubLedModule),
+    AdminModule,
     UserModule,
     AuthModule,
   ],
   controllers: [DeviceController],
-  providers: [DeviceService],
-  exports: [DeviceService],
+  providers: [DeviceService, DeviceAlertService],
+  exports: [DeviceService, DeviceAlertService],
 })
 export class DeviceModule {}

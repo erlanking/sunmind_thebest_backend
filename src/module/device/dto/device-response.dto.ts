@@ -18,6 +18,14 @@ export class DeviceStatusResponseDto {
   mode!: 'manual' | 'auto' | 'schedule';
   lastSeen!: string | null;
   connected!: boolean;
+  deviceStatus?: string;
+  nightGuardEnabled?: boolean;
+  nightGuardStartHour?: number;
+  nightGuardStartMinute?: number;
+  nightGuardEndHour?: number;
+  nightGuardEndMinute?: number;
+  lastMaintenanceAt?: string | null;
+  firmwareVersion?: string | null;
 }
 
 export class DeviceScheduleDto {

@@ -58,6 +58,27 @@ export class DeviceEntity {
   @Column({ type: 'float', nullable: true })
   longitude?: number | null;
 
+  @Column({ name: 'night_guard_enabled', type: 'boolean', default: false })
+  nightGuardEnabled!: boolean;
+
+  @Column({ name: 'night_guard_start_hour', type: 'int', default: 22 })
+  nightGuardStartHour!: number;
+
+  @Column({ name: 'night_guard_start_minute', type: 'int', default: 0 })
+  nightGuardStartMinute!: number;
+
+  @Column({ name: 'night_guard_end_hour', type: 'int', default: 6 })
+  nightGuardEndHour!: number;
+
+  @Column({ name: 'night_guard_end_minute', type: 'int', default: 0 })
+  nightGuardEndMinute!: number;
+
+  @Column({ name: 'last_maintenance_at', type: 'timestamptz', nullable: true })
+  lastMaintenanceAt?: Date | null;
+
+  @Column({ name: 'firmware_version', type: 'varchar', length: 50, nullable: true })
+  firmwareVersion?: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

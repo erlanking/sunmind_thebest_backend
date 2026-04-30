@@ -194,20 +194,15 @@ export class PubLedService implements OnModuleInit, OnModuleDestroy {
   private async processTelemetry(message: string) {
     try {
       const data = JSON.parse(message);
-      const payload = {
-        deviceId: data.deviceId,
-        motion: data.motion,
-        brightness: data.brightness,
-        lux: data.lux,
-        batteryPercent: data.batteryPercent,
-      };
       await this.deviceService.saveTelemetry({
-        deviceId: payload.deviceId,
-        motion: payload.motion ?? false,
-        brightness: payload.brightness ?? 0,
-        lux: payload.lux ?? 0,
-        batteryPercent: payload.batteryPercent ?? null,
-        manualMode: false,
+        deviceId: data.deviceId,
+        motion: data.motion ?? false,
+        brightness: data.brightness ?? 0,
+        lux: data.lux ?? 0,
+        batteryPercent: data.batteryPercent ?? null,
+        manualMode: data.manualMode ?? false,
+        latitude: data.latitude ?? null,
+        longitude: data.longitude ?? null,
       } as any);
     } catch (error) {
       this.logger.error('Ошибка обработки telemetry', (error as Error).message);

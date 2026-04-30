@@ -9,6 +9,8 @@ import { NotificationService } from './notification.service';
 import { UserEntity } from '../database/entities/user.entity';
 import { DeviceEntity } from '../database/entities/device.entity';
 import { DeviceTelemetryEntity } from '../database/entities/device-telemetry.entity';
+import { DeviceErrorEntity } from '../database/entities/device-error.entity';
+import { DeviceMaintenanceEntity } from '../database/entities/device-maintenance.entity';
 import { ZoneEntity } from '../database/entities/zone.entity';
 import { UserModule } from '../user/user.module';
 
@@ -16,7 +18,14 @@ import { UserModule } from '../user/user.module';
   imports: [
     ConfigModule,
     UserModule,
-    TypeOrmModule.forFeature([UserEntity, DeviceEntity, ZoneEntity, DeviceTelemetryEntity]),
+    TypeOrmModule.forFeature([
+      UserEntity,
+      DeviceEntity,
+      ZoneEntity,
+      DeviceTelemetryEntity,
+      DeviceErrorEntity,
+      DeviceMaintenanceEntity,
+    ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -28,5 +37,6 @@ import { UserModule } from '../user/user.module';
   ],
   controllers: [AdminController],
   providers: [AdminService, AdminGuard, NotificationService],
+  exports: [NotificationService],
 })
 export class AdminModule {}
