@@ -380,6 +380,18 @@ export class PubLedService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  async setPowerSource(powerSource: 'battery' | 'ac', deviceId?: string): Promise<void> {
+    await this.ensureConnected();
+    const topic = deviceId ? `home/${deviceId}/power-source` : 'home/light/power-source';
+    this.client.publish(topic, powerSource, { qos: 1 }, (error) => {
+      if (error) {
+        this.logger.error('Ошибка отправки power-source:', error.message);
+      } else {
+        this.logger.log(`✅ power-source ${powerSource} → ${topic}`);
+      }
+    });
+  }
+
   // Установить mock статус для тестирования
   setMockStatus(ledState: 'ON' | 'OFF' = 'OFF'): void {
     this.deviceStatus = {

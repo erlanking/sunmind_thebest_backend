@@ -234,11 +234,14 @@ export class DeviceController {
     @Param('deviceId') deviceId: string,
     @Body() body: { powerSource: 'battery' | 'ac' },
   ) {
-    return this.deviceService.setPowerSource(
+    const result = await this.deviceService.setPowerSource(
       deviceId,
       this.getUserId(req),
       body.powerSource,
     );
+    // Отправляем MQTT команду на реле ESP32
+    await this.pubLedService.setPowerSource(body.powerSource, deviceId);
+    return result;
   }
 
   @Patch('devices/:deviceId/night-guard')
