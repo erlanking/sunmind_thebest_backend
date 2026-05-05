@@ -226,6 +226,21 @@ export class DeviceController {
     );
   }
 
+  @Patch('devices/:deviceId/power-source')
+  @UseGuards(JwtAuthGuard as any)
+  @ApiOperation({ summary: 'Переключить источник питания: battery | ac' })
+  async setPowerSource(
+    @Req() req,
+    @Param('deviceId') deviceId: string,
+    @Body() body: { powerSource: 'battery' | 'ac' },
+  ) {
+    return this.deviceService.setPowerSource(
+      deviceId,
+      this.getUserId(req),
+      body.powerSource,
+    );
+  }
+
   @Patch('devices/:deviceId/night-guard')
   @UseGuards(JwtAuthGuard as any)
   @ApiOperation({ summary: 'Включить/выключить ночной охранный режим' })

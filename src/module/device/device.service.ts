@@ -197,6 +197,19 @@ export class DeviceService {
 
     await this.deviceRepository.save(device);
 
+    // Auto-switch to AC when battery is critically low
+    if (
+      device.batteryPercent != null &&
+      device.batteryPercent <= 20 &&
+      (device.powerSource ?? 'battery') === 'battery'
+    ) {
+      device.powerSource = 'ac';
+      await this.deviceRepository.save(device);
+      if (device.userId) {
+        this.alertService.notifyAcSwitch(device).catch(() => {});
+      }
+    }
+
     // Check alerts asynchronously (don't block response)
     this.alertService.checkAndAlert(device).catch(() => {});
 
@@ -498,7 +511,15 @@ export class DeviceService {
       nightGuardEndMinute: device.nightGuardEndMinute ?? 0,
       lastMaintenanceAt: device.lastMaintenanceAt?.toISOString() ?? null,
       firmwareVersion: device.firmwareVersion ?? null,
+      powerSource: device.powerSource ?? 'battery',
     };
+  }
+
+  async setPowerSource(deviceId: string, userId: number, powerSource: 'battery' | 'ac'): Promise<DeviceStatusResponseDto> {
+    const device = await this.getOwnedDeviceOrFail(deviceId, userId);
+    device.powerSource = powerSource;
+    await this.deviceRepository.save(device);
+    return this.mapStatus(device);
   }
 
   async getErrors(deviceId: string, userId: number): Promise<DeviceErrorEntity[]> {

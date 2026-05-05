@@ -26,6 +26,7 @@ export class DeviceStatusResponseDto {
   nightGuardEndMinute?: number;
   lastMaintenanceAt?: string | null;
   firmwareVersion?: string | null;
+  powerSource?: string; // 'battery' | 'ac'
 }
 
 export class DeviceScheduleDto {

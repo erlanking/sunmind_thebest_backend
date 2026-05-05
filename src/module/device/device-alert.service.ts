@@ -11,6 +11,7 @@ interface AlertState {
   lastErrorAlert: number;
   lastMotionGuardAlert: number;
   lastMaintenanceAlert: number;
+  lastAcSwitchAlert: number;
 }
 
 // Error codes from ТЗ
@@ -205,6 +206,21 @@ export class DeviceAlertService {
     return currentMinutes >= startMinutes && currentMinutes < endMinutes;
   }
 
+  async notifyAcSwitch(device: DeviceEntity): Promise<void> {
+    const state = this.getAlertState(device.deviceId);
+    const now = Date.now();
+    if (now - state.lastAcSwitchAlert < ALERT_COOLDOWN_MS) return;
+    state.lastAcSwitchAlert = now;
+    this.alertStates.set(device.deviceId, state);
+    if (device.userId) {
+      await this.notificationService.sendToUser(
+        device.userId,
+        'Переключение на питание от розетки',
+        `Устройство ${device.name || device.deviceId}: заряд батареи ${device.batteryPercent}%. Питание автоматически переключено на розетку.`,
+      );
+    }
+  }
+
   private getAlertState(deviceId: string): AlertState {
     if (!this.alertStates.has(deviceId)) {
       this.alertStates.set(deviceId, {
@@ -213,6 +229,7 @@ export class DeviceAlertService {
         lastErrorAlert: 0,
         lastMotionGuardAlert: 0,
         lastMaintenanceAlert: 0,
+        lastAcSwitchAlert: 0,
       });
     }
     return this.alertStates.get(deviceId)!;
