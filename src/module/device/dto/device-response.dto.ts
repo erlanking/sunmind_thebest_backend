@@ -27,6 +27,7 @@ export class DeviceStatusResponseDto {
   lastMaintenanceAt?: string | null;
   firmwareVersion?: string | null;
   powerSource?: string; // 'battery' | 'ac'
+  isCharging?: boolean;
 }
 
 export class DeviceScheduleDto {

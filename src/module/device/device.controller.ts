@@ -226,6 +226,23 @@ export class DeviceController {
     );
   }
 
+  @Patch('devices/:deviceId/charge')
+  @UseGuards(JwtAuthGuard as any)
+  @ApiOperation({ summary: 'Включить/выключить зарядку аккумулятора' })
+  async setCharging(
+    @Req() req,
+    @Param('deviceId') deviceId: string,
+    @Body() body: { isCharging: boolean },
+  ) {
+    const result = await this.deviceService.setCharging(
+      deviceId,
+      this.getUserId(req),
+      body.isCharging,
+    );
+    await this.pubLedService.setCharging(body.isCharging, deviceId);
+    return result;
+  }
+
   @Patch('devices/:deviceId/power-source')
   @UseGuards(JwtAuthGuard as any)
   @ApiOperation({ summary: 'Переключить источник питания: battery | ac' })

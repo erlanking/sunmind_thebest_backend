@@ -380,6 +380,16 @@ export class PubLedService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  async setCharging(isCharging: boolean, deviceId?: string): Promise<void> {
+    await this.ensureConnected();
+    const topic = deviceId ? `home/${deviceId}/charge` : 'home/light/charge';
+    const value = isCharging ? 'true' : 'false';
+    this.client.publish(topic, value, { qos: 1 }, (error) => {
+      if (error) this.logger.error('Ошибка отправки charge:', error.message);
+      else this.logger.log(`✅ charge ${value} → ${topic}`);
+    });
+  }
+
   async setPowerSource(powerSource: 'battery' | 'ac', deviceId?: string): Promise<void> {
     await this.ensureConnected();
     const topic = deviceId ? `home/${deviceId}/power-source` : 'home/light/power-source';

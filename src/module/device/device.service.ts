@@ -512,7 +512,15 @@ export class DeviceService {
       lastMaintenanceAt: device.lastMaintenanceAt?.toISOString() ?? null,
       firmwareVersion: device.firmwareVersion ?? null,
       powerSource: device.powerSource ?? 'battery',
+      isCharging: device.isCharging ?? false,
     };
+  }
+
+  async setCharging(deviceId: string, userId: number, isCharging: boolean): Promise<DeviceStatusResponseDto> {
+    const device = await this.getOwnedDeviceOrFail(deviceId, userId);
+    device.isCharging = isCharging;
+    await this.deviceRepository.save(device);
+    return this.mapStatus(device);
   }
 
   async setPowerSource(deviceId: string, userId: number, powerSource: 'battery' | 'ac'): Promise<DeviceStatusResponseDto> {

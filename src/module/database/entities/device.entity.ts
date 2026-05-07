@@ -76,6 +76,9 @@ export class DeviceEntity {
   @Column({ name: 'power_source', type: 'varchar', length: 10, default: 'battery' })
   powerSource!: string; // 'battery' | 'ac'
 
+  @Column({ name: 'is_charging', type: 'boolean', default: false })
+  isCharging!: boolean;
+
   @Column({ name: 'last_maintenance_at', type: 'timestamptz', nullable: true })
   lastMaintenanceAt?: Date | null;
 
