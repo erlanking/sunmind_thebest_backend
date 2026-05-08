@@ -10,6 +10,7 @@ import {
   HttpCode,
   HttpStatus,
   UnauthorizedException,
+  Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { JwtService } from '@nestjs/jwt';
@@ -22,6 +23,8 @@ import { NotificationService } from './notification.service';
 @ApiTags('Admin')
 @Controller('admin')
 export class AdminController {
+  private readonly logger = new Logger(AdminController.name);
+
   constructor(
     private readonly adminService: AdminService,
     private readonly jwtService: JwtService,
@@ -95,10 +98,15 @@ export class AdminController {
   async sendNotification(
     @Body() body: { title: string; message: string; userId?: number },
   ) {
-    if (body.userId) {
-      return this.notificationService.sendToUser(body.userId, body.title, body.message);
+    try {
+      if (body?.userId) {
+        return await this.notificationService.sendToUser(body.userId, body.title, body.message);
+      }
+      return await this.notificationService.sendToAll(body?.title ?? '', body?.message ?? '');
+    } catch (err: any) {
+      this.logger.error(`sendNotification failed: ${err?.stack ?? err?.message ?? String(err)}`);
+      return { sent: 0, failed: 0, error: err?.message ?? 'unknown' };
     }
-    return this.notificationService.sendToAll(body.title, body.message);
   }
 
   private buildHtml(): string {
