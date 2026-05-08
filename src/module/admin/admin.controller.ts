@@ -612,11 +612,14 @@ async function sendNotify() {
       resultEl.textContent = userId
         ? \`Отправлено: \${data.sent}, ошибок: \${data.failed}\`
         : \`Рассылка завершена. Отправлено: \${data.sent}, ошибок: \${data.failed}\`;
+    } else if (res.status === 401) {
+      logout();
+      return;
     } else {
       resultEl.className = 'notify-result err';
-      resultEl.textContent = 'Ошибка отправки';
+      resultEl.textContent = \`Ошибка \${res.status}: \${data?.message ?? 'Неизвестная ошибка'}\`;
     }
-  } catch { resultEl.className = 'notify-result err'; resultEl.textContent = 'Ошибка соединения'; }
+  } catch (e) { resultEl.className = 'notify-result err'; resultEl.textContent = 'Ошибка соединения: ' + e?.message; }
 
   btn.disabled = false;
   btn.textContent = 'Отправить';

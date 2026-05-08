@@ -111,7 +111,14 @@ export class NotificationService {
   }
 
   async sendToAll(title: string, body: string): Promise<{ sent: number; failed: number }> {
-    const users = await this.userService.getAllFcmTokens();
+    let users: { id: number; email: string; fcmToken: string }[] = [];
+    try {
+      users = await this.userService.getAllFcmTokens();
+    } catch (err: any) {
+      this.logger.error(`getAllFcmTokens error: ${err?.message}`);
+      return { sent: 0, failed: 0 };
+    }
+
     let sent = 0;
     let failed = 0;
 
@@ -125,9 +132,15 @@ export class NotificationService {
   }
 
   async sendToUser(userId: number, title: string, body: string): Promise<{ sent: number; failed: number }> {
-    const users = await this.userService.getAllFcmTokens();
-    const user = users.find((u) => u.id === userId);
+    let users: { id: number; email: string; fcmToken: string }[] = [];
+    try {
+      users = await this.userService.getAllFcmTokens();
+    } catch (err: any) {
+      this.logger.error(`getAllFcmTokens error: ${err?.message}`);
+      return { sent: 0, failed: 1 };
+    }
 
+    const user = users.find((u) => u.id === userId);
     if (!user) return { sent: 0, failed: 1 };
     const ok = await this.sendToToken(user.fcmToken, title, body, { type: 'admin' });
     return ok ? { sent: 1, failed: 0 } : { sent: 0, failed: 1 };
