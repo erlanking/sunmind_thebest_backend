@@ -110,34 +110,55 @@ export class AdminController {
 <title>SunMind Admin</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0d0f14;color:#e2e8f0;min-height:100vh}
-.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0d0f14;color:#e2e8f0;height:100vh;overflow:hidden}
+/* Login */
+.login-wrap{display:flex;align-items:center;justify-content:center;height:100vh}
 .login-card{background:#171a1f;border:1px solid #2a2d35;border-radius:16px;padding:40px;width:360px}
 .login-card h1{font-size:22px;font-weight:700;margin-bottom:6px;color:#f6c343}
 .login-card p{color:#858a95;font-size:14px;margin-bottom:24px}
-.panel{display:none}
-.topbar{background:#171a1f;border-bottom:1px solid #2a2d35;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
-.topbar .logo{font-size:18px;font-weight:700;color:#f6c343}
-.topbar button{background:transparent;border:1px solid #2a2d35;color:#858a95;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:13px}
-.topbar button:hover{border-color:#f6c343;color:#f6c343}
-.content{padding:24px;max-width:1400px;margin:0 auto}
-.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:28px}
+/* Panel */
+.panel{display:none;height:100vh}
+.panel.visible{display:flex}
+.app-layout{display:flex;width:100%;height:100%;overflow:hidden}
+/* Sidebar */
+.sidebar{width:230px;background:#111318;border-right:1px solid #2a2d35;display:flex;flex-direction:column;flex-shrink:0}
+.sidebar-logo{padding:22px 18px 18px;border-bottom:1px solid #2a2d35}
+.sidebar-logo .logo-text{font-size:17px;font-weight:700;color:#f6c343}
+.sidebar-logo .logo-sub{font-size:11px;color:#858a95;margin-top:3px}
+.sidebar-nav{flex:1;padding:10px 8px;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:13px;color:#858a95;border:none;background:transparent;width:100%;text-align:left;transition:background .15s,color .15s;margin-bottom:2px}
+.nav-item:hover{background:#1e2128;color:#e2e8f0}
+.nav-item.active{background:#1e2128;color:#f6c343}
+.nav-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.nav-label{font-weight:500}
+.sidebar-footer{padding:12px 8px;border-top:1px solid #2a2d35}
+.server-tag{font-size:10px;color:#858a95;padding:6px 10px;background:#1e2128;border-radius:8px;margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+.logout-btn{display:flex;align-items:center;gap:8px;width:100%;padding:9px 12px;border-radius:10px;border:none;background:transparent;color:#858a95;font-size:13px;cursor:pointer;transition:background .15s,color .15s;font-weight:500}
+.logout-btn:hover{background:#3f1515;color:#f87171}
+/* Main */
+.main-content{flex:1;overflow-y:auto;background:#0d0f14}
+.content{padding:24px;max-width:1400px}
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px;margin-bottom:28px}
 .stat-card{background:#171a1f;border:1px solid #2a2d35;border-radius:12px;padding:18px}
 .stat-card.warn{border-color:#7c3228}
 .stat-card .val{font-size:30px;font-weight:700;color:#f6c343}
 .stat-card.warn .val{color:#f87171}
 .stat-card .lbl{font-size:12px;color:#858a95;margin-top:4px}
-.tabs{display:flex;gap:8px;margin-bottom:24px;border-bottom:1px solid #2a2d35}
-.tab{padding:10px 20px;border:none;background:transparent;color:#858a95;cursor:pointer;font-size:14px;font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px}
-.tab.active{color:#f6c343;border-bottom-color:#f6c343}
+/* Page header */
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.page-header h2{font-size:17px;font-weight:700;color:#e2e8f0}
+/* Sections */
 .section{display:none}
 .section.active{display:block}
+/* Tables */
 .tbl-wrap{overflow-x:auto;border-radius:12px;border:1px solid #2a2d35}
 table{width:100%;border-collapse:collapse;background:#171a1f;min-width:700px}
 th{padding:11px 14px;text-align:left;font-size:11px;font-weight:600;color:#858a95;text-transform:uppercase;border-bottom:1px solid #2a2d35;white-space:nowrap}
 td{padding:11px 14px;font-size:13px;border-bottom:1px solid #1e2128;white-space:nowrap}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:#1e2128}
+/* Badges */
 .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600}
 .b-online{background:#14532d;color:#4ade80}
 .b-offline{background:#2a1515;color:#f87171}
@@ -146,6 +167,7 @@ tr:hover td{background:#1e2128}
 .b-auto{background:#1a2e1a;color:#4ade80}
 .b-manual{background:#2a2010;color:#f6c343}
 .b-warn{background:#3f2010;color:#fb923c}
+/* Buttons */
 .del-btn{background:transparent;border:1px solid #3f1515;color:#f87171;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:11px}
 .del-btn:hover{background:#3f1515}
 input[type=email],input[type=password],input[type=text]{width:100%;padding:10px 14px;background:#0d0f14;border:1px solid #2a2d35;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:12px}
@@ -153,15 +175,15 @@ input:focus{outline:none;border-color:#f6c343}
 .srv-btn{padding:6px 14px;border:1px solid #2a2d35;background:transparent;color:#858a95;border-radius:8px;cursor:pointer;font-size:13px;transition:all .15s}
 .srv-btn.active{border-color:#f6c343;color:#f6c343}
 .srv-btn:hover{border-color:#f6c343;color:#f6c343}
-.server-tag{font-size:11px;color:#858a95;padding:4px 10px;background:#1e2128;border-radius:6px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .btn-primary{width:100%;padding:12px;background:#f6c343;color:#0d0f14;border:none;border-radius:8px;font-weight:700;font-size:15px;cursor:pointer}
 .btn-primary:hover{background:#e5b332}
 .err{color:#f87171;font-size:13px;margin-top:8px;text-align:center}
 .loading{color:#858a95;font-size:14px;padding:40px;text-align:center}
-.refresh-btn{background:transparent;border:1px solid #2a2d35;color:#858a95;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:13px;margin-bottom:14px}
+.refresh-btn{background:transparent;border:1px solid #2a2d35;color:#858a95;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:13px}
 .refresh-btn:hover{border-color:#f6c343;color:#f6c343}
 .bat-bar{display:inline-block;width:40px;height:6px;background:#2a2d35;border-radius:3px;vertical-align:middle;margin-right:6px;overflow:hidden}
 .bat-fill{height:100%;border-radius:3px}
+/* Analytics */
 .analytics-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px}
 .analytics-grid.single{grid-template-columns:1fr}
 @media(max-width:900px){.analytics-grid{grid-template-columns:1fr}}
@@ -179,6 +201,7 @@ input:focus{outline:none;border-color:#f6c343}
 .a-table-card tr:last-child td{border-bottom:none}
 .a-table-card tr:hover td{background:#1e2128}
 .rank{display:inline-block;width:20px;height:20px;background:#2a2d35;border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:700;margin-right:6px}
+/* Notify */
 .notify-card{background:#171a1f;border:1px solid #2a2d35;border-radius:16px;padding:28px;max-width:560px}
 .notify-card h2{font-size:17px;font-weight:700;margin-bottom:20px;color:#f6c343}
 .notify-card label{display:block;font-size:12px;color:#858a95;margin-bottom:6px;margin-top:14px;text-transform:uppercase;font-weight:600}
@@ -191,15 +214,12 @@ input:focus{outline:none;border-color:#f6c343}
 .notify-result{margin-top:14px;padding:12px 16px;border-radius:8px;font-size:14px}
 .notify-result.ok{background:#14532d;color:#4ade80}
 .notify-result.err{background:#3f1515;color:#f87171}
-</style>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<style>
+/* Map */
 #mapContainer{height:520px;border-radius:12px;overflow:hidden;border:1px solid #2a2d35}
 .map-legend{display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap}
 .map-legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:#858a95}
 .map-legend-dot{width:12px;height:12px;border-radius:50%}
+/* Location modal */
 .loc-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center}
 .loc-modal.open{display:flex}
 .loc-card{background:#171a1f;border:1px solid #2a2d35;border-radius:16px;padding:28px;width:380px;max-width:95vw}
@@ -213,6 +233,9 @@ input:focus{outline:none;border-color:#f6c343}
 .loc-cancel{flex:1;padding:11px;background:transparent;color:#858a95;border:1px solid #2a2d35;border-radius:8px;cursor:pointer}
 .loc-cancel:hover{border-color:#f6c343;color:#f6c343}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 
@@ -236,49 +259,101 @@ input:focus{outline:none;border-color:#f6c343}
 </div>
 
 <div class="panel" id="panel">
-  <div class="topbar">
-    <span class="logo">SunMind Admin</span>
-    <span class="server-tag" id="serverLabel"></span>
-    <button onclick="logout()">Выйти</button>
-  </div>
-  <div class="content">
-    <div class="stats" id="statsRow"><div class="loading">Загрузка...</div></div>
-    <div class="tabs">
-      <button class="tab active" onclick="showTab('devices')">Все устройства</button>
-      <button class="tab" onclick="showTab('unowned')">Не привязанные</button>
-      <button class="tab" onclick="showTab('users')">Пользователи</button>
-      <button class="tab" onclick="showTab('analytics')">Аналитика</button>
-      <button class="tab" onclick="showTab('notify')">Уведомления</button>
-      <button class="tab" onclick="showTab('map')">Карта</button>
-    </div>
-    <div class="section active" id="tab-devices">
-      <button class="refresh-btn" onclick="loadDevices()">Обновить</button>
-      <div class="tbl-wrap" id="devicesTable"><div class="loading">Загрузка...</div></div>
-    </div>
-    <div class="section" id="tab-unowned">
-      <button class="refresh-btn" onclick="loadUnowned()">Обновить</button>
-      <div class="tbl-wrap" id="unownedTable"><div class="loading">Загрузка...</div></div>
-    </div>
-    <div class="section" id="tab-users">
-      <button class="refresh-btn" onclick="loadUsers()">Обновить</button>
-      <div class="tbl-wrap" id="usersTable"><div class="loading">Загрузка...</div></div>
-    </div>
-    <div class="section" id="tab-analytics">
-      <button class="refresh-btn" onclick="loadAnalytics()">Обновить</button>
-      <div id="analyticsWrap"><div class="loading">Загрузка...</div></div>
-    </div>
-    <div class="section" id="tab-notify">
-      <div id="notifyWrap"></div>
-    </div>
-    <div class="section" id="tab-map">
-      <button class="refresh-btn" onclick="loadMap()">Обновить карту</button>
-      <div class="map-legend">
-        <div class="map-legend-item"><div class="map-legend-dot" style="background:#4ade80"></div>Онлайн</div>
-        <div class="map-legend-item"><div class="map-legend-dot" style="background:#f87171"></div>Офлайн / Поломка</div>
-        <div class="map-legend-item"><div class="map-legend-dot" style="background:#858a95"></div>Без координат</div>
+  <div class="app-layout">
+    <nav class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-text">SunMind Admin</div>
+        <div class="logo-sub">Панель управления</div>
       </div>
-      <div id="mapContainer"></div>
-      <p style="color:#858a95;font-size:12px;margin-top:10px">Нажмите на маркер, чтобы увидеть информацию. В таблице устройств нажмите «Координаты», чтобы задать местоположение.</p>
+      <div class="sidebar-nav">
+        <button class="nav-item active" data-tab="devices" onclick="showTab('devices')">
+          <span class="nav-icon">&#128225;</span>
+          <span class="nav-label">Все устройства</span>
+        </button>
+        <button class="nav-item" data-tab="unowned" onclick="showTab('unowned')">
+          <span class="nav-icon">&#128279;</span>
+          <span class="nav-label">Не привязанные</span>
+        </button>
+        <button class="nav-item" data-tab="users" onclick="showTab('users')">
+          <span class="nav-icon">&#128101;</span>
+          <span class="nav-label">Пользователи</span>
+        </button>
+        <button class="nav-item" data-tab="analytics" onclick="showTab('analytics')">
+          <span class="nav-icon">&#128202;</span>
+          <span class="nav-label">Аналитика</span>
+        </button>
+        <button class="nav-item" data-tab="notify" onclick="showTab('notify')">
+          <span class="nav-icon">&#128276;</span>
+          <span class="nav-label">Уведомления</span>
+        </button>
+        <button class="nav-item" data-tab="map" onclick="showTab('map')">
+          <span class="nav-icon">&#128506;</span>
+          <span class="nav-label">Карта</span>
+        </button>
+      </div>
+      <div class="sidebar-footer">
+        <span class="server-tag" id="serverLabel"></span>
+        <button class="logout-btn" onclick="logout()">
+          <span>&#10548;</span> Выйти
+        </button>
+      </div>
+    </nav>
+
+    <div class="main-content">
+      <div class="content">
+        <div class="stats" id="statsRow"><div class="loading">Загрузка...</div></div>
+
+        <div class="section active" id="tab-devices">
+          <div class="page-header">
+            <h2>Все устройства</h2>
+            <button class="refresh-btn" onclick="loadDevices()">&#8635; Обновить</button>
+          </div>
+          <div class="tbl-wrap" id="devicesTable"><div class="loading">Загрузка...</div></div>
+        </div>
+
+        <div class="section" id="tab-unowned">
+          <div class="page-header">
+            <h2>Не привязанные устройства</h2>
+            <button class="refresh-btn" onclick="loadUnowned()">&#8635; Обновить</button>
+          </div>
+          <div class="tbl-wrap" id="unownedTable"><div class="loading">Загрузка...</div></div>
+        </div>
+
+        <div class="section" id="tab-users">
+          <div class="page-header">
+            <h2>Пользователи</h2>
+            <button class="refresh-btn" onclick="loadUsers()">&#8635; Обновить</button>
+          </div>
+          <div class="tbl-wrap" id="usersTable"><div class="loading">Загрузка...</div></div>
+        </div>
+
+        <div class="section" id="tab-analytics">
+          <div class="page-header">
+            <h2>Аналитика</h2>
+            <button class="refresh-btn" onclick="loadAnalytics()">&#8635; Обновить</button>
+          </div>
+          <div id="analyticsWrap"><div class="loading">Загрузка...</div></div>
+        </div>
+
+        <div class="section" id="tab-notify">
+          <div class="page-header"><h2>Уведомления</h2></div>
+          <div id="notifyWrap"></div>
+        </div>
+
+        <div class="section" id="tab-map">
+          <div class="page-header">
+            <h2>Карта устройств</h2>
+            <button class="refresh-btn" onclick="loadMap()">&#8635; Обновить</button>
+          </div>
+          <div class="map-legend">
+            <div class="map-legend-item"><div class="map-legend-dot" style="background:#4ade80"></div>Онлайн</div>
+            <div class="map-legend-item"><div class="map-legend-dot" style="background:#f87171"></div>Офлайн / Поломка</div>
+            <div class="map-legend-item"><div class="map-legend-dot" style="background:#858a95"></div>Без координат</div>
+          </div>
+          <div id="mapContainer"></div>
+          <p style="color:#858a95;font-size:12px;margin-top:10px">Нажмите на маркер, чтобы увидеть информацию. В таблице устройств нажмите «Координаты», чтобы задать местоположение.</p>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -347,7 +422,7 @@ async function doLogin() {
 
 function showPanel() {
   document.getElementById('loginWrap').style.display = 'none';
-  document.getElementById('panel').style.display = 'block';
+  document.getElementById('panel').classList.add('visible');
   document.getElementById('serverLabel').textContent = BASE_URL;
   loadStats(); loadDevices();
 }
@@ -355,8 +430,7 @@ function showPanel() {
 function logout() { localStorage.removeItem('admin_token'); location.reload(); }
 
 function showTab(name) {
-  const tabs = ['devices','unowned','users','analytics','notify'];
-  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', tabs[i] === name));
+  document.querySelectorAll('.nav-item').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   if (name === 'users') loadUsers();
