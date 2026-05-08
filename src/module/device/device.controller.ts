@@ -226,6 +226,22 @@ export class DeviceController {
     );
   }
 
+  @Delete('devices/:deviceId/maintenance/:maintenanceId')
+  @UseGuards(JwtAuthGuard as any)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Удалить запись обслуживания' })
+  async deleteMaintenance(
+    @Req() req,
+    @Param('deviceId') deviceId: string,
+    @Param('maintenanceId') maintenanceId: string,
+  ) {
+    return this.deviceService.deleteMaintenance(
+      deviceId,
+      this.getUserId(req),
+      Number(maintenanceId),
+    );
+  }
+
   @Patch('devices/:deviceId/charge')
   @UseGuards(JwtAuthGuard as any)
   @ApiOperation({ summary: 'Включить/выключить зарядку аккумулятора' })

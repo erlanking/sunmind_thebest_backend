@@ -582,6 +582,11 @@ export class DeviceService {
     });
   }
 
+  async deleteMaintenance(deviceId: string, userId: number, maintenanceId: number): Promise<void> {
+    await this.getOwnedDeviceOrFail(deviceId, userId);
+    await this.maintenanceRepository.delete({ id: maintenanceId, deviceId });
+  }
+
   async toggleNightGuard(deviceId: string, userId: number, enabled: boolean): Promise<DeviceStatusResponseDto> {
     const device = await this.getOwnedDeviceOrFail(deviceId, userId);
     device.nightGuardEnabled = enabled;
