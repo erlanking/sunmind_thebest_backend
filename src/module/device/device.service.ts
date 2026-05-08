@@ -223,6 +223,7 @@ export class DeviceService {
       temperature: dto.temperature ?? undefined,
       humidity: dto.humidity ?? undefined,
       manualMode: resolvedManualMode,
+      powerSource: device.powerSource ?? 'battery',
       createdAt,
     });
     await this.telemetryRepository.save(telemetry);
@@ -305,6 +306,7 @@ export class DeviceService {
       temperature: row.temperature ?? null,
       humidity: row.humidity ?? null,
       manualMode: row.manualMode,
+      powerSource: row.powerSource ?? 'battery',
       createdAt: new Date(row.createdAt),
     }));
   }

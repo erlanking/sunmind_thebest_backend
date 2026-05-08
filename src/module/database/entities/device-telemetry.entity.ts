@@ -33,6 +33,9 @@ export class DeviceTelemetryEntity {
   @Column({ name: 'manual_mode', type: 'boolean', default: false })
   manualMode!: boolean;
 
+  @Column({ name: 'power_source', type: 'varchar', nullable: true })
+  powerSource?: string;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 }
