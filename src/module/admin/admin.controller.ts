@@ -222,7 +222,9 @@ input:focus{outline:none;border-color:#f6c343}
 /* Location modal */
 .loc-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center}
 .loc-modal.open{display:flex}
-.loc-card{background:#171a1f;border:1px solid #2a2d35;border-radius:16px;padding:28px;width:380px;max-width:95vw}
+.loc-card{background:#171a1f;border:1px solid #2a2d35;border-radius:16px;padding:28px;width:540px;max-width:96vw}
+#locMapContainer{height:280px;border-radius:10px;overflow:hidden;border:1px solid #2a2d35;margin-bottom:14px}
+.loc-hint{font-size:11px;color:#858a95;margin-top:6px;margin-bottom:10px}
 .loc-card h3{font-size:16px;font-weight:700;color:#f6c343;margin-bottom:18px}
 .loc-card label{display:block;font-size:11px;color:#858a95;text-transform:uppercase;font-weight:600;margin-bottom:5px;margin-top:12px}
 .loc-card input{width:100%;padding:9px 12px;background:#0d0f14;border:1px solid #2a2d35;border-radius:8px;color:#e2e8f0;font-size:14px}
@@ -361,11 +363,18 @@ input:focus{outline:none;border-color:#f6c343}
 <div class="loc-modal" id="locModal">
   <div class="loc-card">
     <h3 id="locModalTitle">Координаты устройства</h3>
-    <label>Широта (Latitude)</label>
-    <input type="number" id="locLat" placeholder="42.8746" step="0.0001">
-    <label>Долгота (Longitude)</label>
-    <input type="number" id="locLng" placeholder="74.5698" step="0.0001">
-    <p style="font-size:11px;color:#858a95;margin-top:10px">Например, Бишкек: 42.8746, 74.5698</p>
+    <div id="locMapContainer"></div>
+    <p class="loc-hint">Кликните на карту или введите координаты вручную</p>
+    <div style="display:flex;gap:12px">
+      <div style="flex:1">
+        <label>Широта (Latitude)</label>
+        <input type="number" id="locLat" placeholder="42.8746" step="0.000001" oninput="locMoveMarker()">
+      </div>
+      <div style="flex:1">
+        <label>Долгота (Longitude)</label>
+        <input type="number" id="locLng" placeholder="74.5698" step="0.000001" oninput="locMoveMarker()">
+      </div>
+    </div>
     <div class="loc-actions">
       <button class="loc-cancel" onclick="closeLocModal()">Отмена</button>
       <button class="loc-save" onclick="saveLocation()">Сохранить</button>
@@ -787,17 +796,60 @@ async function loadMap() {
 
 // ── Location modal ───────────────────────────────────────────────────────────
 let locDeviceId = null;
+let locMapInst = null;
+let locMarker = null;
+
+const locPinIcon = () => L.divIcon({
+  className: '',
+  html: '<div style="width:22px;height:22px;background:#f6c343;border:3px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(246,195,67,.9)"></div>',
+  iconSize: [22, 22], iconAnchor: [11, 11],
+});
 
 function openLocModal(deviceId, name, lat, lng) {
   locDeviceId = deviceId;
   document.getElementById('locModalTitle').textContent = 'Координаты: ' + (name || deviceId);
-  document.getElementById('locLat').value = lat ?? '';
-  document.getElementById('locLng').value = lng ?? '';
+  document.getElementById('locLat').value = (lat != null && !isNaN(lat)) ? lat : '';
+  document.getElementById('locLng').value = (lng != null && !isNaN(lng)) ? lng : '';
   document.getElementById('locModal').classList.add('open');
+
+  setTimeout(() => {
+    const container = document.getElementById('locMapContainer');
+    if (locMapInst) { locMapInst.remove(); locMapInst = null; locMarker = null; }
+    container.innerHTML = '';
+
+    const hasCoords = lat != null && !isNaN(lat) && lng != null && !isNaN(lng);
+    const cLat = hasCoords ? lat : 42.8746;
+    const cLng = hasCoords ? lng : 74.5698;
+    locMapInst = L.map(container).setView([cLat, cLng], hasCoords ? 13 : 10);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(locMapInst);
+
+    if (hasCoords) {
+      locMarker = L.marker([lat, lng], { icon: locPinIcon() }).addTo(locMapInst);
+    }
+
+    locMapInst.on('click', e => {
+      const { lat: la, lng: ln } = e.latlng;
+      document.getElementById('locLat').value = la.toFixed(6);
+      document.getElementById('locLng').value = ln.toFixed(6);
+      if (locMarker) { locMarker.setLatLng([la, ln]); }
+      else { locMarker = L.marker([la, ln], { icon: locPinIcon() }).addTo(locMapInst); }
+    });
+  }, 60);
+}
+
+function locMoveMarker() {
+  if (!locMapInst) return;
+  const lat = parseFloat(document.getElementById('locLat').value);
+  const lng = parseFloat(document.getElementById('locLng').value);
+  if (isNaN(lat) || isNaN(lng)) return;
+  if (locMarker) { locMarker.setLatLng([lat, lng]); }
+  else { locMarker = L.marker([lat, lng], { icon: locPinIcon() }).addTo(locMapInst); }
+  locMapInst.setView([lat, lng]);
 }
 
 function closeLocModal() {
   document.getElementById('locModal').classList.remove('open');
+  if (locMapInst) { locMapInst.remove(); locMapInst = null; locMarker = null; }
   locDeviceId = null;
 }
 
