@@ -190,6 +190,18 @@ export class DeviceService {
     device.humidity = dto.humidity ?? undefined;
     device.manualMode = resolvedManualMode;
     device.lastSeen = createdAt;
+
+    // Sync battery control state reported by ESP32
+    if (dto.powerSource != null) {
+      // Normalize 'mains' -> 'ac'
+      device.powerSource = dto.powerSource === 'mains' ? 'ac' : dto.powerSource;
+    }
+    if (dto.isCharging != null) device.isCharging = dto.isCharging;
+    if (dto.chargeMode != null) device.chargeMode = dto.chargeMode;
+    if (dto.lowBatteryThreshold != null) device.lowBatteryThreshold = dto.lowBatteryThreshold;
+    if (dto.fullChargeThreshold != null) device.fullChargeThreshold = dto.fullChargeThreshold;
+    if (dto.autoSolarCharge != null) device.autoSolarCharge = dto.autoSolarCharge;
+
     if (dto.latitude != null && dto.longitude != null) {
       device.latitude = dto.latitude;
       device.longitude = dto.longitude;
