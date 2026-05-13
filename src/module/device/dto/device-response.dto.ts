@@ -28,6 +28,10 @@ export class DeviceStatusResponseDto {
   firmwareVersion?: string | null;
   powerSource?: string; // 'battery' | 'ac'
   isCharging?: boolean;
+  chargeMode?: string; // 'manual' | 'auto'
+  lowBatteryThreshold?: number;
+  fullChargeThreshold?: number;
+  autoSolarCharge?: boolean;
 }
 
 export class DeviceScheduleDto {

@@ -402,6 +402,25 @@ export class PubLedService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  async setBatteryChargeMode(
+    chargeMode: 'manual' | 'auto',
+    lowBatteryThreshold: number,
+    fullChargeThreshold: number,
+    autoSolarCharge: boolean,
+    deviceId?: string,
+  ): Promise<void> {
+    await this.ensureConnected();
+    const topic = deviceId ? `home/${deviceId}/battery-mode` : 'home/light/battery-mode';
+    const payload = JSON.stringify({ chargeMode, lowBatteryThreshold, fullChargeThreshold, autoSolarCharge });
+    this.client.publish(topic, payload, { qos: 1 }, (error) => {
+      if (error) {
+        this.logger.error('Ошибка отправки battery-mode:', error.message);
+      } else {
+        this.logger.log(`✅ battery-mode → ${topic}: ${payload}`);
+      }
+    });
+  }
+
   // Установить mock статус для тестирования
   setMockStatus(ledState: 'ON' | 'OFF' = 'OFF'): void {
     this.deviceStatus = {

@@ -515,6 +515,10 @@ export class DeviceService {
       firmwareVersion: device.firmwareVersion ?? null,
       powerSource: device.powerSource ?? 'battery',
       isCharging: device.isCharging ?? false,
+      chargeMode: device.chargeMode ?? 'manual',
+      lowBatteryThreshold: device.lowBatteryThreshold ?? 20,
+      fullChargeThreshold: device.fullChargeThreshold ?? 90,
+      autoSolarCharge: device.autoSolarCharge ?? true,
     };
   }
 
@@ -528,6 +532,23 @@ export class DeviceService {
   async setPowerSource(deviceId: string, userId: number, powerSource: 'battery' | 'ac'): Promise<DeviceStatusResponseDto> {
     const device = await this.getOwnedDeviceOrFail(deviceId, userId);
     device.powerSource = powerSource;
+    await this.deviceRepository.save(device);
+    return this.mapStatus(device);
+  }
+
+  async setBatteryChargeMode(
+    deviceId: string,
+    userId: number,
+    chargeMode: 'manual' | 'auto',
+    lowBatteryThreshold: number,
+    fullChargeThreshold: number,
+    autoSolarCharge: boolean,
+  ): Promise<DeviceStatusResponseDto> {
+    const device = await this.getOwnedDeviceOrFail(deviceId, userId);
+    device.chargeMode = chargeMode;
+    device.lowBatteryThreshold = lowBatteryThreshold;
+    device.fullChargeThreshold = fullChargeThreshold;
+    device.autoSolarCharge = autoSolarCharge;
     await this.deviceRepository.save(device);
     return this.mapStatus(device);
   }
