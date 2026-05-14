@@ -223,10 +223,28 @@ input:focus{outline:none;border-color:#f6c343}
 .notify-result.ok{background:#14532d;color:#4ade80}
 .notify-result.err{background:#3f1515;color:#f87171}
 /* Map */
-#mapContainer{height:520px;border-radius:12px;overflow:hidden;border:1px solid #2a2d35}
+.map-wrap{position:relative}
+#mapContainer{height:480px;border-radius:12px;overflow:hidden;border:1px solid #2a2d35;cursor:grab}
+#mapContainer.placing{cursor:crosshair}
 .map-legend{display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap}
 .map-legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:#858a95}
 .map-legend-dot{width:12px;height:12px;border-radius:50%}
+.map-placing-banner{display:none;position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:1000;background:#f6c343;color:#0d0f14;font-size:13px;font-weight:700;padding:8px 20px;border-radius:999px;box-shadow:0 2px 12px rgba(246,195,67,.5);white-space:nowrap}
+.map-placing-banner.visible{display:block}
+.device-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:20px}
+.device-card{background:#171a1f;border:1px solid #2a2d35;border-radius:12px;padding:16px;transition:border-color .15s}
+.device-card.active{border-color:#f6c343}
+.device-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.device-card-name{font-size:13px;font-weight:600;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px}
+.device-card-id{font-size:10px;color:#858a95;font-family:monospace;margin-top:1px}
+.device-card-meta{font-size:11px;color:#858a95;margin-bottom:10px}
+.device-card-coords{font-size:10px;color:#858a95;margin-bottom:10px;font-family:monospace}
+.place-btn{width:100%;padding:7px;border-radius:8px;border:none;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s}
+.place-btn.idle{background:transparent;border:1px solid #2a2d35;color:#858a95}
+.place-btn.idle:hover{border-color:#f6c343;color:#f6c343}
+.place-btn.placing{background:#f6c343;color:#0d0f14}
+.place-btn.placed{background:transparent;border:1px solid #1e3a5f;color:#60a5fa}
+.place-btn.placed:hover{border-color:#f6c343;color:#f6c343}
 /* Location modal */
 .loc-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center}
 .loc-modal.open{display:flex}
@@ -357,11 +375,14 @@ input:focus{outline:none;border-color:#f6c343}
           </div>
           <div class="map-legend">
             <div class="map-legend-item"><div class="map-legend-dot" style="background:#4ade80"></div>Онлайн</div>
-            <div class="map-legend-item"><div class="map-legend-dot" style="background:#f87171"></div>Офлайн / Поломка</div>
-            <div class="map-legend-item"><div class="map-legend-dot" style="background:#858a95"></div>Без координат</div>
+            <div class="map-legend-item"><div class="map-legend-dot" style="background:#fb923c"></div>Низкий заряд</div>
+            <div class="map-legend-item"><div class="map-legend-dot" style="background:#f87171"></div>Офлайн</div>
           </div>
-          <div id="mapContainer"></div>
-          <p style="color:#858a95;font-size:12px;margin-top:10px">Нажмите на маркер, чтобы увидеть информацию. В таблице устройств нажмите «Координаты», чтобы задать местоположение.</p>
+          <div class="map-wrap">
+            <div id="mapPlacingBanner" class="map-placing-banner"></div>
+            <div id="mapContainer"></div>
+          </div>
+          <div class="device-cards" id="mapDeviceCards"></div>
         </div>
       </div>
     </div>
@@ -736,73 +757,157 @@ document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); })
 
 // ── MAP ─────────────────────────────────────────────────────────────────────
 let mapInstance = null;
+let mapDevices = [];
+let mapMarkers = {};
+let placingDeviceId = null;
+
+function makeIcon(color, pulse) {
+  const ring = pulse ? \`<div style="position:absolute;width:20px;height:20px;border-radius:50%;background:\${color};opacity:.3;animation:mpulse 1.5s ease-in-out infinite"></div>\` : '';
+  return L.divIcon({
+    className: '',
+    html: \`<div style="position:relative;width:20px;height:20px;display:flex;align-items:center;justify-content:center">
+      \${ring}
+      <div style="width:12px;height:12px;border-radius:50%;background:\${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5)"></div>
+    </div>
+    <style>@keyframes mpulse{0%,100%{transform:scale(1);opacity:.3}50%{transform:scale(1.9);opacity:0}}</style>\`,
+    iconSize: [20, 20], iconAnchor: [10, 10], popupAnchor: [0, -12],
+  });
+}
+
+function deviceIcon(d) {
+  if (!d.online) return makeIcon('#f87171', false);
+  if (d.batteryPercent != null && d.batteryPercent < 20) return makeIcon('#fb923c', true);
+  return makeIcon('#4ade80', true);
+}
+
+function renderDeviceCards() {
+  const wrap = document.getElementById('mapDeviceCards');
+  if (!wrap) return;
+  wrap.innerHTML = mapDevices.map(d => {
+    const isPlacing = placingDeviceId === d.deviceId;
+    const hasCoords = d.latitude != null && d.longitude != null;
+    const statusColor = !d.online ? '#f87171' : (d.batteryPercent != null && d.batteryPercent < 20 ? '#fb923c' : '#4ade80');
+    const statusText = !d.online ? 'Офлайн' : (d.batteryPercent != null && d.batteryPercent < 20 ? 'Низкий заряд' : 'Онлайн');
+    const btnClass = isPlacing ? 'placing' : (hasCoords ? 'placed' : 'idle');
+    const btnText = isPlacing ? '✕ Отмена' : (hasCoords ? '📍 Переместить' : '＋ Разместить');
+    const coords = hasCoords ? \`\${d.latitude.toFixed(5)}, \${d.longitude.toFixed(5)}\` : 'Нет координат';
+    return \`<div class="device-card \${isPlacing ? 'active' : ''}" id="card-\${d.deviceId}">
+      <div class="device-card-header">
+        <div>
+          <div class="device-card-name">\${d.name || d.deviceId}</div>
+          \${d.name ? \`<div class="device-card-id">\${d.deviceId}</div>\` : ''}
+        </div>
+        <span style="font-size:11px;font-weight:700;color:\${statusColor}">\${statusText}</span>
+      </div>
+      <div class="device-card-meta">\${d.batteryPercent != null ? 'АКБ: ' + d.batteryPercent + '%' : ''}\${d.lux != null ? (d.batteryPercent != null ? ' · ' : '') + d.lux + ' лк' : ''}</div>
+      <div class="device-card-coords">\${coords}</div>
+      <button class="place-btn \${btnClass}" onclick="togglePlacing('\${d.deviceId}')">\${btnText}</button>
+    </div>\`;
+  }).join('');
+}
+
+function togglePlacing(deviceId) {
+  if (placingDeviceId === deviceId) {
+    placingDeviceId = null;
+  } else {
+    placingDeviceId = deviceId;
+  }
+  const banner = document.getElementById('mapPlacingBanner');
+  const container = document.getElementById('mapContainer');
+  if (placingDeviceId) {
+    const d = mapDevices.find(x => x.deviceId === placingDeviceId);
+    banner.textContent = \`Нажмите на карту, чтобы разместить «\${d?.name || placingDeviceId}»\`;
+    banner.classList.add('visible');
+    container.classList.add('placing');
+  } else {
+    banner.classList.remove('visible');
+    container.classList.remove('placing');
+  }
+  renderDeviceCards();
+}
 
 async function loadMap() {
   const data = await api('/admin/devices');
   if (!data) return;
+  mapDevices = data;
 
   const container = document.getElementById('mapContainer');
   if (!container) return;
-
-  // Destroy old map instance to avoid Leaflet errors on re-init
-  if (mapInstance) { mapInstance.remove(); mapInstance = null; }
+  if (mapInstance) { mapInstance.remove(); mapInstance = null; mapMarkers = {}; }
   container.innerHTML = '';
+  placingDeviceId = null;
+  document.getElementById('mapPlacingBanner')?.classList.remove('visible');
+  container.classList.remove('placing');
 
-  // Default center: Bishkek
-  let centerLat = 42.8746, centerLng = 74.5698;
   const withCoords = data.filter(d => d.latitude != null && d.longitude != null);
+  let centerLat = 42.8746, centerLng = 74.5698;
   if (withCoords.length > 0) {
     centerLat = withCoords.reduce((s, d) => s + d.latitude, 0) / withCoords.length;
     centerLng = withCoords.reduce((s, d) => s + d.longitude, 0) / withCoords.length;
   }
 
-  mapInstance = L.map(container).setView([centerLat, centerLng], withCoords.length > 0 ? 10 : 12);
+  mapInstance = L.map(container).setView([centerLat, centerLng], withCoords.length > 0 ? 12 : 10);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors',
-    maxZoom: 19,
+    attribution: '© OpenStreetMap contributors', maxZoom: 19,
   }).addTo(mapInstance);
 
-  const greenIcon = L.divIcon({
-    className: '',
-    html: '<div style="width:16px;height:16px;background:#4ade80;border:2px solid #fff;border-radius:50%;box-shadow:0 0 6px rgba(74,222,128,.8)"></div>',
-    iconSize: [16, 16], iconAnchor: [8, 8], popupAnchor: [0, -10],
-  });
-  const redIcon = L.divIcon({
-    className: '',
-    html: '<div style="width:16px;height:16px;background:#f87171;border:2px solid #fff;border-radius:50%;box-shadow:0 0 6px rgba(248,113,113,.8)"></div>',
-    iconSize: [16, 16], iconAnchor: [8, 8], popupAnchor: [0, -10],
-  });
-
   withCoords.forEach(d => {
-    const icon = d.online ? greenIcon : redIcon;
-    const lastSeen = d.lastSeen ? new Date(d.lastSeen).toLocaleString('ru') : '—';
     const bat = d.batteryPercent != null ? d.batteryPercent + '%' : '—';
-    const status = d.online ? '<span style="color:#4ade80;font-weight:700">● Онлайн</span>' : '<span style="color:#f87171;font-weight:700">● Офлайн</span>';
-    const popup = \`
-      <div style="font-family:-apple-system,sans-serif;min-width:200px">
-        <div style="font-size:14px;font-weight:700;margin-bottom:6px">\${d.name || d.deviceId}</div>
-        <div style="font-size:12px;color:#555;margin-bottom:4px">ID: \${d.deviceId}</div>
-        <div style="font-size:12px;margin-bottom:2px">\${status}</div>
-        <div style="font-size:12px;color:#555">Батарея: \${bat}</div>
-        <div style="font-size:12px;color:#555">Яркость: \${d.brightness ?? '—'}</div>
-        <div style="font-size:12px;color:#555">Последняя связь: \${lastSeen}</div>
-      </div>
-    \`;
-    L.marker([d.latitude, d.longitude], { icon }).addTo(mapInstance).bindPopup(popup);
+    const status = d.online
+      ? '<span style="color:#4ade80;font-weight:700">● Онлайн</span>'
+      : '<span style="color:#f87171;font-weight:700">● Офлайн</span>';
+    const popup = \`<div style="font-family:-apple-system,sans-serif;min-width:180px">
+      <div style="font-size:14px;font-weight:700;margin-bottom:5px">\${d.name || d.deviceId}</div>
+      <div style="font-size:12px;color:#555;margin-bottom:3px">ID: \${d.deviceId}</div>
+      <div style="font-size:12px;margin-bottom:2px">\${status}</div>
+      <div style="font-size:12px;color:#555">АКБ: \${bat}</div>
+      <div style="font-size:11px;color:#999;margin-top:4px">\${d.latitude.toFixed(5)}, \${d.longitude.toFixed(5)}</div>
+    </div>\`;
+    mapMarkers[d.deviceId] = L.marker([d.latitude, d.longitude], { icon: deviceIcon(d) })
+      .addTo(mapInstance).bindPopup(popup);
   });
 
-  const noCoords = data.filter(d => d.latitude == null || d.longitude == null);
-  if (noCoords.length > 0) {
-    const list = noCoords.map(d => \`<b>\${d.deviceId}</b>\`).join(', ');
-    const info = L.control({ position: 'bottomleft' });
-    info.onAdd = () => {
-      const div = L.DomUtil.create('div');
-      div.style.cssText = 'background:rgba(23,26,31,.9);color:#858a95;font-size:11px;padding:8px 12px;border-radius:8px;max-width:280px;line-height:1.4';
-      div.innerHTML = \`Без координат (\${noCoords.length}): \${list}\`;
-      return div;
-    };
-    info.addTo(mapInstance);
-  }
+  // Клик по карте — ставим маркер выбранного устройства
+  mapInstance.on('click', async e => {
+    if (!placingDeviceId) return;
+    const { lat, lng } = e.latlng;
+    const deviceId = placingDeviceId;
+
+    // Сохраняем на сервер
+    await fetch(BASE_URL + '/admin/devices/' + encodeURIComponent(deviceId) + '/location', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ latitude: lat, longitude: lng }),
+    });
+
+    // Обновляем локальные данные
+    mapDevices = mapDevices.map(d => d.deviceId === deviceId ? { ...d, latitude: lat, longitude: lng } : d);
+    const d = mapDevices.find(x => x.deviceId === deviceId);
+
+    // Обновляем / добавляем маркер
+    if (mapMarkers[deviceId]) {
+      mapMarkers[deviceId].setLatLng([lat, lng]);
+    } else {
+      const bat = d.batteryPercent != null ? d.batteryPercent + '%' : '—';
+      const status = d.online
+        ? '<span style="color:#4ade80;font-weight:700">● Онлайн</span>'
+        : '<span style="color:#f87171;font-weight:700">● Офлайн</span>';
+      const popup = \`<div style="font-family:-apple-system,sans-serif;min-width:180px">
+        <div style="font-size:14px;font-weight:700;margin-bottom:5px">\${d.name || d.deviceId}</div>
+        <div style="font-size:12px;margin-bottom:2px">\${status}</div>
+        <div style="font-size:12px;color:#555">АКБ: \${bat}</div>
+      </div>\`;
+      mapMarkers[deviceId] = L.marker([lat, lng], { icon: deviceIcon(d) })
+        .addTo(mapInstance).bindPopup(popup);
+    }
+
+    placingDeviceId = null;
+    document.getElementById('mapPlacingBanner')?.classList.remove('visible');
+    document.getElementById('mapContainer')?.classList.remove('placing');
+    renderDeviceCards();
+  });
+
+  renderDeviceCards();
 }
 
 // ── Location modal ───────────────────────────────────────────────────────────
