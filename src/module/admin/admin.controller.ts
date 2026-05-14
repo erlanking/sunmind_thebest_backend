@@ -806,7 +806,7 @@ function openIconPicker(event, deviceId) {
   const d = mapDevices.find(x => x.deviceId === deviceId);
   const current = getDeviceIcon(d || { deviceId });
   popup.innerHTML = ICON_OPTIONS.map((ic, idx) =>
-    \`<span class="icon-opt \${ic === current ? 'selected' : ''}" data-idx="\${idx}" data-device="\${deviceId}">\${ic}</span>\`
+    \`<span class="icon-opt \${ic === current ? 'selected' : ''}" onclick="selectIcon(\${idx})">\${ic}</span>\`
   ).join('');
 
   const rect = event.target.getBoundingClientRect();
@@ -845,14 +845,13 @@ function updateMarkerIcon(deviceId) {
   mapMarkers[deviceId].setIcon(deviceIcon(d));
 }
 
+function selectIcon(idx) {
+  if (!activePickerDeviceId) return;
+  pickIcon(activePickerDeviceId, ICON_OPTIONS[idx]);
+}
+
 document.addEventListener('click', e => {
   const popup = document.getElementById('iconPickerPopup');
-  const opt = e.target.closest('.icon-opt');
-  if (opt && opt.dataset.idx !== undefined) {
-    const icon = ICON_OPTIONS[Number(opt.dataset.idx)];
-    pickIcon(opt.dataset.device, icon);
-    return;
-  }
   if (popup && !popup.contains(e.target) && !e.target.closest('.dc-icon')) {
     popup.classList.remove('open');
     activePickerDeviceId = null;
