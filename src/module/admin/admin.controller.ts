@@ -809,17 +809,26 @@ function openIconPicker(event, deviceId) {
 }
 
 async function pickIcon(deviceId, icon) {
-  // Save to DB via PATCH /api/devices/:id
-  await fetch(BASE_URL + '/admin/devices/' + encodeURIComponent(deviceId) + '/icon', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-    body: JSON.stringify({ icon }),
-  });
+  try {
+    const res = await fetch(BASE_URL + '/admin/devices/' + encodeURIComponent(deviceId) + '/icon', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ icon }),
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => res.status);
+      alert('Ошибка сохранения иконки: ' + txt);
+      return;
+    }
+  } catch(e) {
+    alert('Сетевая ошибка: ' + e.message);
+    return;
+  }
   // Update local cache
   mapDevices = mapDevices.map(d => d.deviceId === deviceId ? { ...d, icon } : d);
   document.getElementById('iconPickerPopup').classList.remove('open');
   activePickerDeviceId = null;
-  // Update icon on card + map marker label
+  // Update icon on card + map marker
   const el = document.getElementById('dc-icon-' + deviceId);
   if (el) el.textContent = icon;
   updateMarkerIcon(deviceId);
