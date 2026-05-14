@@ -231,20 +231,24 @@ input:focus{outline:none;border-color:#f6c343}
 .map-legend-dot{width:12px;height:12px;border-radius:50%}
 .map-placing-banner{display:none;position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:1000;background:#f6c343;color:#0d0f14;font-size:13px;font-weight:700;padding:8px 20px;border-radius:999px;box-shadow:0 2px 12px rgba(246,195,67,.5);white-space:nowrap}
 .map-placing-banner.visible{display:block}
-.device-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:20px}
-.device-card{background:#171a1f;border:1px solid #2a2d35;border-radius:12px;padding:16px;transition:border-color .15s}
-.device-card.active{border-color:#f6c343}
-.device-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.device-card-name{font-size:13px;font-weight:600;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px}
-.device-card-id{font-size:10px;color:#858a95;font-family:monospace;margin-top:1px}
-.device-card-meta{font-size:11px;color:#858a95;margin-bottom:10px}
-.device-card-coords{font-size:10px;color:#858a95;margin-bottom:10px;font-family:monospace}
-.place-btn{width:100%;padding:7px;border-radius:8px;border:none;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s}
-.place-btn.idle{background:transparent;border:1px solid #2a2d35;color:#858a95}
-.place-btn.idle:hover{border-color:#f6c343;color:#f6c343}
+.device-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-top:22px}
+.device-card{border-radius:16px;padding:0;overflow:hidden;transition:transform .15s,box-shadow .15s;cursor:default}
+.device-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.device-card.active{box-shadow:0 0 0 3px #f6c343,0 8px 24px rgba(246,195,67,.3)}
+.dc-top{padding:18px 16px 14px;position:relative;min-height:90px}
+.dc-icon{font-size:28px;margin-bottom:8px;display:block}
+.dc-name{font-size:13px;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dc-id{font-size:10px;color:rgba(255,255,255,.6);font-family:monospace;margin-top:2px}
+.dc-status{position:absolute;top:14px;right:14px;font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;background:rgba(0,0,0,.3);color:#fff}
+.dc-bottom{padding:12px 16px;background:rgba(0,0,0,.25)}
+.dc-meta{font-size:11px;color:rgba(255,255,255,.7);margin-bottom:3px}
+.dc-coords{font-size:10px;color:rgba(255,255,255,.5);font-family:monospace;margin-bottom:10px;min-height:14px}
+.place-btn{width:100%;padding:8px;border-radius:8px;border:none;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s}
+.place-btn.idle{background:rgba(255,255,255,.15);color:#fff}
+.place-btn.idle:hover{background:rgba(255,255,255,.25)}
 .place-btn.placing{background:#f6c343;color:#0d0f14}
-.place-btn.placed{background:transparent;border:1px solid #1e3a5f;color:#60a5fa}
-.place-btn.placed:hover{border-color:#f6c343;color:#f6c343}
+.place-btn.placed{background:rgba(255,255,255,.15);color:#fff}
+.place-btn.placed:hover{background:#f6c343;color:#0d0f14}
 /* Location modal */
 .loc-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center}
 .loc-modal.open{display:flex}
@@ -780,28 +784,46 @@ function deviceIcon(d) {
   return makeIcon('#4ade80', true);
 }
 
+const CARD_PALETTES = [
+  {bg:'linear-gradient(135deg,#f6c343 0%,#e07a0e 100%)',shadow:'rgba(246,195,67,.4)'},
+  {bg:'linear-gradient(135deg,#60a5fa 0%,#2563eb 100%)',shadow:'rgba(96,165,250,.4)'},
+  {bg:'linear-gradient(135deg,#4ade80 0%,#16a34a 100%)',shadow:'rgba(74,222,128,.4)'},
+  {bg:'linear-gradient(135deg,#f472b6 0%,#be185d 100%)',shadow:'rgba(244,114,182,.4)'},
+  {bg:'linear-gradient(135deg,#a78bfa 0%,#7c3aed 100%)',shadow:'rgba(167,139,250,.4)'},
+  {bg:'linear-gradient(135deg,#fb923c 0%,#c2410c 100%)',shadow:'rgba(251,146,60,.4)'},
+  {bg:'linear-gradient(135deg,#34d399 0%,#065f46 100%)',shadow:'rgba(52,211,153,.4)'},
+  {bg:'linear-gradient(135deg,#f87171 0%,#b91c1c 100%)',shadow:'rgba(248,113,113,.4)'},
+];
+
 function renderDeviceCards() {
   const wrap = document.getElementById('mapDeviceCards');
   if (!wrap) return;
-  wrap.innerHTML = mapDevices.map(d => {
+  wrap.innerHTML = mapDevices.map((d, i) => {
     const isPlacing = placingDeviceId === d.deviceId;
     const hasCoords = d.latitude != null && d.longitude != null;
-    const statusColor = !d.online ? '#f87171' : (d.batteryPercent != null && d.batteryPercent < 20 ? '#fb923c' : '#4ade80');
-    const statusText = !d.online ? 'Офлайн' : (d.batteryPercent != null && d.batteryPercent < 20 ? 'Низкий заряд' : 'Онлайн');
+    const palette = CARD_PALETTES[i % CARD_PALETTES.length];
+    const statusText = !d.online ? 'Офлайн' : (d.batteryPercent != null && d.batteryPercent < 20 ? '⚠ Заряд' : 'Онлайн');
     const btnClass = isPlacing ? 'placing' : (hasCoords ? 'placed' : 'idle');
     const btnText = isPlacing ? '✕ Отмена' : (hasCoords ? '📍 Переместить' : '＋ Разместить');
-    const coords = hasCoords ? \`\${d.latitude.toFixed(5)}, \${d.longitude.toFixed(5)}\` : 'Нет координат';
-    return \`<div class="device-card \${isPlacing ? 'active' : ''}" id="card-\${d.deviceId}">
-      <div class="device-card-header">
-        <div>
-          <div class="device-card-name">\${d.name || d.deviceId}</div>
-          \${d.name ? \`<div class="device-card-id">\${d.deviceId}</div>\` : ''}
-        </div>
-        <span style="font-size:11px;font-weight:700;color:\${statusColor}">\${statusText}</span>
+    const coords = hasCoords ? \`\${d.latitude.toFixed(5)}, \${d.longitude.toFixed(5)}\` : '';
+    const meta = [
+      d.batteryPercent != null ? 'АКБ: ' + d.batteryPercent + '%' : null,
+      d.lux != null ? d.lux + ' лк' : null,
+      d.brightness != null ? 'Ярк: ' + d.brightness : null,
+    ].filter(Boolean).join(' · ') || '—';
+    return \`<div class="device-card \${isPlacing ? 'active' : ''}" id="card-\${d.deviceId}"
+      style="background:\${palette.bg};box-shadow:0 4px 16px \${palette.shadow}">
+      <div class="dc-top">
+        <span class="dc-icon">☀️</span>
+        <div class="dc-name">\${d.name || d.deviceId}</div>
+        \${d.name ? \`<div class="dc-id">\${d.deviceId}</div>\` : ''}
+        <div class="dc-status">\${statusText}</div>
       </div>
-      <div class="device-card-meta">\${d.batteryPercent != null ? 'АКБ: ' + d.batteryPercent + '%' : ''}\${d.lux != null ? (d.batteryPercent != null ? ' · ' : '') + d.lux + ' лк' : ''}</div>
-      <div class="device-card-coords">\${coords}</div>
-      <button class="place-btn \${btnClass}" onclick="togglePlacing('\${d.deviceId}')">\${btnText}</button>
+      <div class="dc-bottom">
+        <div class="dc-meta">\${meta}</div>
+        <div class="dc-coords">\${coords}</div>
+        <button class="place-btn \${btnClass}" onclick="togglePlacing('\${d.deviceId}')">\${btnText}</button>
+      </div>
     </div>\`;
   }).join('');
 }
