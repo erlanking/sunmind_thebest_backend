@@ -249,6 +249,14 @@ input:focus{outline:none;border-color:#f6c343}
 .place-btn.placing{background:#f6c343;color:#0d0f14}
 .place-btn.placed{background:rgba(255,255,255,.15);color:#fff}
 .place-btn.placed:hover{background:#f6c343;color:#0d0f14}
+/* Icon picker */
+.icon-picker-popup{display:none;position:absolute;z-index:2000;background:#171a1f;border:1px solid #2a2d35;border-radius:12px;padding:10px;box-shadow:0 8px 32px rgba(0,0,0,.6);width:220px;flex-wrap:wrap;gap:6px}
+.icon-picker-popup.open{display:flex}
+.icon-opt{font-size:22px;cursor:pointer;padding:5px;border-radius:8px;transition:background .1s;line-height:1;border:2px solid transparent}
+.icon-opt:hover{background:#2a2d35;border-color:#f6c343}
+.icon-opt.selected{border-color:#f6c343;background:#2a2d35}
+.dc-icon{cursor:pointer;display:block;font-size:28px;margin-bottom:8px;transition:transform .15s;position:relative}
+.dc-icon:hover{transform:scale(1.2)}
 /* Location modal */
 .loc-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center}
 .loc-modal.open{display:flex}
@@ -392,6 +400,8 @@ input:focus{outline:none;border-color:#f6c343}
     </div>
   </div>
 </div>
+
+<div id="iconPickerPopup" class="icon-picker-popup"></div>
 
 <div class="loc-modal" id="locModal">
   <div class="loc-card">
@@ -759,6 +769,55 @@ async function loadAnalytics() {
 
 document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 
+// ── ICON PICKER ──────────────────────────────────────────────────────────────
+const ICON_OPTIONS = ['☀️','🌤️','⚡','🔋','💡','🏭','🏗️','🌿','🔆','📡','🛰️','⭐','🌞','🔌','🏠','🌱','💎','🔥','❄️','🎯'];
+let iconStorage = JSON.parse(localStorage.getItem('device_icons') || '{}');
+let activePickerDeviceId = null;
+
+function getDeviceIcon(deviceId) {
+  return iconStorage[deviceId] || '☀️';
+}
+
+function openIconPicker(event, deviceId) {
+  event.stopPropagation();
+  const popup = document.getElementById('iconPickerPopup');
+  if (activePickerDeviceId === deviceId && popup.classList.contains('open')) {
+    popup.classList.remove('open');
+    activePickerDeviceId = null;
+    return;
+  }
+  activePickerDeviceId = deviceId;
+  const current = getDeviceIcon(deviceId);
+  popup.innerHTML = ICON_OPTIONS.map(ic =>
+    \`<span class="icon-opt \${ic === current ? 'selected' : ''}" onclick="pickIcon('\${deviceId}','\${ic}')">\${ic}</span>\`
+  ).join('');
+
+  // position near click
+  const rect = event.target.getBoundingClientRect();
+  popup.style.left = Math.min(rect.left, window.innerWidth - 240) + 'px';
+  popup.style.top = (rect.bottom + 8) + 'px';
+  popup.style.position = 'fixed';
+  popup.classList.add('open');
+}
+
+function pickIcon(deviceId, icon) {
+  iconStorage[deviceId] = icon;
+  localStorage.setItem('device_icons', JSON.stringify(iconStorage));
+  document.getElementById('iconPickerPopup').classList.remove('open');
+  activePickerDeviceId = null;
+  // update just the icon span without full re-render
+  const el = document.getElementById('dc-icon-' + deviceId);
+  if (el) el.textContent = icon;
+}
+
+document.addEventListener('click', e => {
+  const popup = document.getElementById('iconPickerPopup');
+  if (popup && !popup.contains(e.target) && !e.target.closest('.dc-icon')) {
+    popup.classList.remove('open');
+    activePickerDeviceId = null;
+  }
+});
+
 // ── MAP ─────────────────────────────────────────────────────────────────────
 let mapInstance = null;
 let mapDevices = [];
@@ -814,7 +873,7 @@ function renderDeviceCards() {
     return \`<div class="device-card \${isPlacing ? 'active' : ''}" id="card-\${d.deviceId}"
       style="background:\${palette.bg};box-shadow:0 4px 16px \${palette.shadow}">
       <div class="dc-top">
-        <span class="dc-icon">☀️</span>
+        <span class="dc-icon" id="dc-icon-\${d.deviceId}" title="Нажмите, чтобы изменить иконку" onclick="openIconPicker(event,'\${d.deviceId}')">\${getDeviceIcon(d.deviceId)}</span>
         <div class="dc-name">\${d.name || d.deviceId}</div>
         \${d.name ? \`<div class="dc-id">\${d.deviceId}</div>\` : ''}
         <div class="dc-status">\${statusText}</div>
