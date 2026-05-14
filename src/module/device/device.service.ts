@@ -143,6 +143,7 @@ export class DeviceService {
 
     if (dto.latitude !== undefined) device.latitude = dto.latitude;
     if (dto.longitude !== undefined) device.longitude = dto.longitude;
+    if (dto.icon !== undefined) device.icon = dto.icon;
 
     await this.deviceRepository.save(device);
 
@@ -536,6 +537,7 @@ export class DeviceService {
       autoSolarCharge: device.autoSolarCharge ?? true,
       latitude: device.latitude ?? null,
       longitude: device.longitude ?? null,
+      icon: device.icon ?? null,
     };
   }
 

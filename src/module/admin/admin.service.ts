@@ -136,11 +136,17 @@ export class AdminService {
       createdAt: d.createdAt,
       latitude: d.latitude ?? null,
       longitude: d.longitude ?? null,
+      icon: d.icon ?? null,
     }));
   }
 
   async setDeviceLocation(deviceId: string, latitude: number, longitude: number) {
     await this.devices.update({ deviceId }, { latitude, longitude });
+    return { success: true };
+  }
+
+  async setDeviceIcon(deviceId: string, icon: string) {
+    await this.devices.update({ deviceId }, { icon });
     return { success: true };
   }
 

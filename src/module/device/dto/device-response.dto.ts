@@ -28,6 +28,7 @@ export class DeviceStatusResponseDto {
   firmwareVersion?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  icon?: string | null;
   powerSource?: string; // 'battery' | 'ac'
   isCharging?: boolean;
   chargeMode?: string; // 'manual' | 'auto'

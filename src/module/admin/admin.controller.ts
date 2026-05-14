@@ -83,6 +83,15 @@ export class AdminController {
     @Body() body: { latitude: number; longitude: number },
   ) { return this.adminService.setDeviceLocation(deviceId, body.latitude, body.longitude); }
 
+  @Post('devices/:deviceId/icon')
+  @UseGuards(AdminGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Установить иконку устройства' })
+  setIcon(
+    @Param('deviceId') deviceId: string,
+    @Body() body: { icon: string },
+  ) { return this.adminService.setDeviceIcon(deviceId, body.icon); }
+
   @Get('unowned')
   @UseGuards(AdminGuard)
   getUnowned() { return this.adminService.getUnownedDevices(); }
@@ -771,11 +780,10 @@ document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); })
 
 // ── ICON PICKER ──────────────────────────────────────────────────────────────
 const ICON_OPTIONS = ['☀️','🌤️','⚡','🔋','💡','🏭','🏗️','🌿','🔆','📡','🛰️','⭐','🌞','🔌','🏠','🌱','💎','🔥','❄️','🎯'];
-let iconStorage = JSON.parse(localStorage.getItem('device_icons') || '{}');
 let activePickerDeviceId = null;
 
-function getDeviceIcon(deviceId) {
-  return iconStorage[deviceId] || '☀️';
+function getDeviceIcon(device) {
+  return device.icon || '☀️';
 }
 
 function openIconPicker(event, deviceId) {
@@ -787,12 +795,12 @@ function openIconPicker(event, deviceId) {
     return;
   }
   activePickerDeviceId = deviceId;
-  const current = getDeviceIcon(deviceId);
+  const d = mapDevices.find(x => x.deviceId === deviceId);
+  const current = getDeviceIcon(d || {});
   popup.innerHTML = ICON_OPTIONS.map(ic =>
     \`<span class="icon-opt \${ic === current ? 'selected' : ''}" onclick="pickIcon('\${deviceId}','\${ic}')">\${ic}</span>\`
   ).join('');
 
-  // position near click
   const rect = event.target.getBoundingClientRect();
   popup.style.left = Math.min(rect.left, window.innerWidth - 240) + 'px';
   popup.style.top = (rect.bottom + 8) + 'px';
@@ -800,14 +808,27 @@ function openIconPicker(event, deviceId) {
   popup.classList.add('open');
 }
 
-function pickIcon(deviceId, icon) {
-  iconStorage[deviceId] = icon;
-  localStorage.setItem('device_icons', JSON.stringify(iconStorage));
+async function pickIcon(deviceId, icon) {
+  // Save to DB via PATCH /api/devices/:id
+  await fetch(BASE_URL + '/admin/devices/' + encodeURIComponent(deviceId) + '/icon', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ icon }),
+  });
+  // Update local cache
+  mapDevices = mapDevices.map(d => d.deviceId === deviceId ? { ...d, icon } : d);
   document.getElementById('iconPickerPopup').classList.remove('open');
   activePickerDeviceId = null;
-  // update just the icon span without full re-render
+  // Update icon on card + map marker label
   const el = document.getElementById('dc-icon-' + deviceId);
   if (el) el.textContent = icon;
+  updateMarkerIcon(deviceId);
+}
+
+function updateMarkerIcon(deviceId) {
+  const d = mapDevices.find(x => x.deviceId === deviceId);
+  if (!d || !mapMarkers[deviceId]) return;
+  mapMarkers[deviceId].setIcon(deviceIcon(d));
 }
 
 document.addEventListener('click', e => {
@@ -824,23 +845,28 @@ let mapDevices = [];
 let mapMarkers = {};
 let placingDeviceId = null;
 
-function makeIcon(color, pulse) {
-  const ring = pulse ? \`<div style="position:absolute;width:20px;height:20px;border-radius:50%;background:\${color};opacity:.3;animation:mpulse 1.5s ease-in-out infinite"></div>\` : '';
+function makeIcon(color, pulse, emoji) {
+  const ring = pulse ? \`<div style="position:absolute;inset:0;border-radius:50%;background:\${color};opacity:.3;animation:mpulse 1.5s ease-in-out infinite"></div>\` : '';
+  const emojiEl = emoji
+    ? \`<div style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:18px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))">\${emoji}</div>\`
+    : '';
   return L.divIcon({
     className: '',
     html: \`<div style="position:relative;width:20px;height:20px;display:flex;align-items:center;justify-content:center">
+      \${emojiEl}
       \${ring}
       <div style="width:12px;height:12px;border-radius:50%;background:\${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5)"></div>
     </div>
     <style>@keyframes mpulse{0%,100%{transform:scale(1);opacity:.3}50%{transform:scale(1.9);opacity:0}}</style>\`,
-    iconSize: [20, 20], iconAnchor: [10, 10], popupAnchor: [0, -12],
+    iconSize: [20, 36], iconAnchor: [10, 36], popupAnchor: [0, -36],
   });
 }
 
 function deviceIcon(d) {
-  if (!d.online) return makeIcon('#f87171', false);
-  if (d.batteryPercent != null && d.batteryPercent < 20) return makeIcon('#fb923c', true);
-  return makeIcon('#4ade80', true);
+  const emoji = getDeviceIcon(d);
+  if (!d.online) return makeIcon('#f87171', false, emoji);
+  if (d.batteryPercent != null && d.batteryPercent < 20) return makeIcon('#fb923c', true, emoji);
+  return makeIcon('#4ade80', true, emoji);
 }
 
 const CARD_PALETTES = [
@@ -873,7 +899,7 @@ function renderDeviceCards() {
     return \`<div class="device-card \${isPlacing ? 'active' : ''}" id="card-\${d.deviceId}"
       style="background:\${palette.bg};box-shadow:0 4px 16px \${palette.shadow}">
       <div class="dc-top">
-        <span class="dc-icon" id="dc-icon-\${d.deviceId}" title="Нажмите, чтобы изменить иконку" onclick="openIconPicker(event,'\${d.deviceId}')">\${getDeviceIcon(d.deviceId)}</span>
+        <span class="dc-icon" id="dc-icon-\${d.deviceId}" title="Нажмите, чтобы изменить иконку" onclick="openIconPicker(event,'\${d.deviceId}')">\${getDeviceIcon(d)}</span>
         <div class="dc-name">\${d.name || d.deviceId}</div>
         \${d.name ? \`<div class="dc-id">\${d.deviceId}</div>\` : ''}
         <div class="dc-status">\${statusText}</div>

@@ -24,4 +24,8 @@ export class UpdateDeviceDto {
   @Min(-180)
   @Max(180)
   longitude?: number | null;
+
+  @IsOptional()
+  @IsString()
+  icon?: string | null;
 }
