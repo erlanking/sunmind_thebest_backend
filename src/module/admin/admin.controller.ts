@@ -782,8 +782,16 @@ document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); })
 const ICON_OPTIONS = ['☀️','🌤️','⚡','🔋','💡','🏭','🏗️','🌿','🔆','📡','🛰️','⭐','🌞','🔌','🏠','🌱','💎','🔥','❄️','🎯'];
 let activePickerDeviceId = null;
 
+// localStorage — мгновенное хранилище (не теряется при обновлении)
+const iconCache = JSON.parse(localStorage.getItem('sm_icons') || '{}');
+
+function saveIconCache() {
+  localStorage.setItem('sm_icons', JSON.stringify(iconCache));
+}
+
+// Иконка: сначала из кэша, потом из DB, по умолчанию ☀️
 function getDeviceIcon(device) {
-  return device.icon || '☀️';
+  return iconCache[device.deviceId] || device.icon || '☀️';
 }
 
 function openIconPicker(event, deviceId) {
@@ -796,7 +804,7 @@ function openIconPicker(event, deviceId) {
   }
   activePickerDeviceId = deviceId;
   const d = mapDevices.find(x => x.deviceId === deviceId);
-  const current = getDeviceIcon(d || {});
+  const current = getDeviceIcon(d || { deviceId });
   popup.innerHTML = ICON_OPTIONS.map(ic =>
     \`<span class="icon-opt \${ic === current ? 'selected' : ''}" data-icon="\${ic}" data-device="\${deviceId}">\${ic}</span>\`
   ).join('');
@@ -809,29 +817,24 @@ function openIconPicker(event, deviceId) {
 }
 
 async function pickIcon(deviceId, icon) {
-  try {
-    const res = await fetch(BASE_URL + '/admin/devices/' + encodeURIComponent(deviceId) + '/icon', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-      body: JSON.stringify({ icon }),
-    });
-    if (!res.ok) {
-      const txt = await res.text().catch(() => res.status);
-      alert('Ошибка сохранения иконки: ' + txt);
-      return;
-    }
-  } catch(e) {
-    alert('Сетевая ошибка: ' + e.message);
-    return;
-  }
-  // Update local cache
+  // 1. Сохраняем в localStorage немедленно — не потеряется при обновлении
+  iconCache[deviceId] = icon;
+  saveIconCache();
+
+  // 2. Обновляем UI
   mapDevices = mapDevices.map(d => d.deviceId === deviceId ? { ...d, icon } : d);
   document.getElementById('iconPickerPopup').classList.remove('open');
   activePickerDeviceId = null;
-  // Update icon on card + map marker
   const el = document.getElementById('dc-icon-' + deviceId);
   if (el) el.textContent = icon;
   updateMarkerIcon(deviceId);
+
+  // 3. Пробуем сохранить в DB (фоновая синхронизация)
+  fetch(BASE_URL + '/admin/devices/' + encodeURIComponent(deviceId) + '/icon', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ icon }),
+  }).catch(() => {}); // ошибку игнорируем — localStorage уже сохранён
 }
 
 function updateMarkerIcon(deviceId) {
@@ -950,6 +953,11 @@ function togglePlacing(deviceId) {
 async function loadMap() {
   const data = await api('/admin/devices');
   if (!data) return;
+  // Мержим иконки: DB icon имеет приоритет и синхронизирует кэш
+  data.forEach(d => {
+    if (d.icon) { iconCache[d.deviceId] = d.icon; saveIconCache(); }
+    else if (iconCache[d.deviceId]) { d.icon = iconCache[d.deviceId]; }
+  });
   mapDevices = data;
 
   const container = document.getElementById('mapContainer');
