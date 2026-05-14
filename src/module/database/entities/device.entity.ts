@@ -91,7 +91,7 @@ export class DeviceEntity {
   @Column({ name: 'auto_solar_charge', type: 'boolean', default: true })
   autoSolarCharge!: boolean;
 
-  @Column({ type: 'varchar', length: 10, nullable: true })
+  @Column({ type: 'varchar', length: 20, nullable: true })
   icon?: string | null;
 
   @Column({ name: 'last_maintenance_at', type: 'timestamptz', nullable: true })
