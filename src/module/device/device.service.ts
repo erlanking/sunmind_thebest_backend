@@ -141,6 +141,9 @@ export class DeviceService {
       }
     }
 
+    if (dto.latitude !== undefined) device.latitude = dto.latitude;
+    if (dto.longitude !== undefined) device.longitude = dto.longitude;
+
     await this.deviceRepository.save(device);
 
     return this.getOwnedDeviceOrFail(deviceId, userId, true);
@@ -531,6 +534,8 @@ export class DeviceService {
       lowBatteryThreshold: device.lowBatteryThreshold ?? 20,
       fullChargeThreshold: device.fullChargeThreshold ?? 90,
       autoSolarCharge: device.autoSolarCharge ?? true,
+      latitude: device.latitude ?? null,
+      longitude: device.longitude ?? null,
     };
   }
 

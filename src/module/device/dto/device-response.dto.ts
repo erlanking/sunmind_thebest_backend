@@ -26,6 +26,8 @@ export class DeviceStatusResponseDto {
   nightGuardEndMinute?: number;
   lastMaintenanceAt?: string | null;
   firmwareVersion?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   powerSource?: string; // 'battery' | 'ac'
   isCharging?: boolean;
   chargeMode?: string; // 'manual' | 'auto'
