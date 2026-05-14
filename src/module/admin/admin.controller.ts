@@ -805,8 +805,8 @@ function openIconPicker(event, deviceId) {
   activePickerDeviceId = deviceId;
   const d = mapDevices.find(x => x.deviceId === deviceId);
   const current = getDeviceIcon(d || { deviceId });
-  popup.innerHTML = ICON_OPTIONS.map(ic =>
-    \`<span class="icon-opt \${ic === current ? 'selected' : ''}" data-icon="\${ic}" data-device="\${deviceId}">\${ic}</span>\`
+  popup.innerHTML = ICON_OPTIONS.map((ic, idx) =>
+    \`<span class="icon-opt \${ic === current ? 'selected' : ''}" data-idx="\${idx}" data-device="\${deviceId}">\${ic}</span>\`
   ).join('');
 
   const rect = event.target.getBoundingClientRect();
@@ -817,9 +817,11 @@ function openIconPicker(event, deviceId) {
 }
 
 async function pickIcon(deviceId, icon) {
+  console.log('[SunMind] pickIcon', deviceId, icon);
   // 1. Сохраняем в localStorage немедленно — не потеряется при обновлении
   iconCache[deviceId] = icon;
   saveIconCache();
+  console.log('[SunMind] iconCache saved', JSON.stringify(iconCache));
 
   // 2. Обновляем UI
   mapDevices = mapDevices.map(d => d.deviceId === deviceId ? { ...d, icon } : d);
@@ -846,8 +848,9 @@ function updateMarkerIcon(deviceId) {
 document.addEventListener('click', e => {
   const popup = document.getElementById('iconPickerPopup');
   const opt = e.target.closest('.icon-opt');
-  if (opt && opt.dataset.icon) {
-    pickIcon(opt.dataset.device, opt.dataset.icon);
+  if (opt && opt.dataset.idx !== undefined) {
+    const icon = ICON_OPTIONS[Number(opt.dataset.idx)];
+    pickIcon(opt.dataset.device, icon);
     return;
   }
   if (popup && !popup.contains(e.target) && !e.target.closest('.dc-icon')) {
