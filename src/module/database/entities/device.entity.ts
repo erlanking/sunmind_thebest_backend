@@ -88,6 +88,9 @@ export class DeviceEntity {
   @Column({ name: 'charge_stop_threshold', type: 'int', default: 90 })
   chargeStopThreshold!: number;
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  icon?: string | null;
+
   @Column({ name: 'last_maintenance_at', type: 'timestamptz', nullable: true })
   lastMaintenanceAt?: Date | null;
 
