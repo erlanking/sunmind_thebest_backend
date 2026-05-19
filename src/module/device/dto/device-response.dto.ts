@@ -26,15 +26,11 @@ export class DeviceStatusResponseDto {
   nightGuardEndMinute?: number;
   lastMaintenanceAt?: string | null;
   firmwareVersion?: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
-  icon?: string | null;
   powerSource?: string; // 'battery' | 'ac'
   isCharging?: boolean;
-  chargeMode?: string; // 'manual' | 'auto'
-  lowBatteryThreshold?: number;
-  fullChargeThreshold?: number;
-  autoSolarCharge?: boolean;
+  batteryMode?: string; // 'manual' | 'auto'
+  chargeStartThreshold?: number;
+  chargeStopThreshold?: number;
 }
 
 export class DeviceScheduleDto {

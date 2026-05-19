@@ -141,10 +141,6 @@ export class DeviceService {
       }
     }
 
-    if (dto.latitude !== undefined) device.latitude = dto.latitude;
-    if (dto.longitude !== undefined) device.longitude = dto.longitude;
-    if (dto.icon !== undefined) device.icon = dto.icon;
-
     await this.deviceRepository.save(device);
 
     return this.getOwnedDeviceOrFail(deviceId, userId, true);
@@ -194,18 +190,6 @@ export class DeviceService {
     device.humidity = dto.humidity ?? undefined;
     device.manualMode = resolvedManualMode;
     device.lastSeen = createdAt;
-
-    // Sync battery control state reported by ESP32
-    if (dto.powerSource != null) {
-      // Normalize 'mains' -> 'ac'
-      device.powerSource = dto.powerSource === 'mains' ? 'ac' : dto.powerSource;
-    }
-    if (dto.isCharging != null) device.isCharging = dto.isCharging;
-    if (dto.chargeMode != null) device.chargeMode = dto.chargeMode;
-    if (dto.lowBatteryThreshold != null) device.lowBatteryThreshold = dto.lowBatteryThreshold;
-    if (dto.fullChargeThreshold != null) device.fullChargeThreshold = dto.fullChargeThreshold;
-    if (dto.autoSolarCharge != null) device.autoSolarCharge = dto.autoSolarCharge;
-
     if (dto.latitude != null && dto.longitude != null) {
       device.latitude = dto.latitude;
       device.longitude = dto.longitude;
@@ -213,12 +197,27 @@ export class DeviceService {
 
     await this.deviceRepository.save(device);
 
-    // Auto-switch to AC when battery is critically low
-    if (
+    // Auto-charge logic
+    if (device.batteryPercent != null && (device.batteryMode ?? 'manual') === 'auto') {
+      const startThr = device.chargeStartThreshold ?? 20;
+      const stopThr = device.chargeStopThreshold ?? 90;
+      if (device.batteryPercent <= startThr && !device.isCharging) {
+        device.isCharging = true;
+        device.powerSource = 'ac';
+        await this.deviceRepository.save(device);
+        if (device.userId) this.alertService.notifyAcSwitch(device).catch(() => {});
+      } else if (device.batteryPercent >= stopThr && device.isCharging) {
+        device.isCharging = false;
+        device.powerSource = 'battery';
+        await this.deviceRepository.save(device);
+      }
+    } else if (
+      (device.batteryMode ?? 'manual') === 'manual' &&
       device.batteryPercent != null &&
       device.batteryPercent <= 20 &&
       (device.powerSource ?? 'battery') === 'battery'
     ) {
+      // Fallback: critically low in manual mode — force AC
       device.powerSource = 'ac';
       await this.deviceRepository.save(device);
       if (device.userId) {
@@ -531,14 +530,25 @@ export class DeviceService {
       firmwareVersion: device.firmwareVersion ?? null,
       powerSource: device.powerSource ?? 'battery',
       isCharging: device.isCharging ?? false,
-      chargeMode: device.chargeMode ?? 'manual',
-      lowBatteryThreshold: device.lowBatteryThreshold ?? 20,
-      fullChargeThreshold: device.fullChargeThreshold ?? 90,
-      autoSolarCharge: device.autoSolarCharge ?? true,
-      latitude: device.latitude ?? null,
-      longitude: device.longitude ?? null,
-      icon: device.icon ?? null,
+      batteryMode: device.batteryMode ?? 'manual',
+      chargeStartThreshold: device.chargeStartThreshold ?? 20,
+      chargeStopThreshold: device.chargeStopThreshold ?? 90,
     };
+  }
+
+  async setBatterySettings(
+    deviceId: string,
+    userId: number,
+    batteryMode: 'manual' | 'auto',
+    chargeStartThreshold: number,
+    chargeStopThreshold: number,
+  ): Promise<DeviceStatusResponseDto> {
+    const device = await this.getOwnedDeviceOrFail(deviceId, userId);
+    device.batteryMode = batteryMode;
+    device.chargeStartThreshold = chargeStartThreshold;
+    device.chargeStopThreshold = chargeStopThreshold;
+    await this.deviceRepository.save(device);
+    return this.mapStatus(device);
   }
 
   async setCharging(deviceId: string, userId: number, isCharging: boolean): Promise<DeviceStatusResponseDto> {
@@ -551,23 +561,6 @@ export class DeviceService {
   async setPowerSource(deviceId: string, userId: number, powerSource: 'battery' | 'ac'): Promise<DeviceStatusResponseDto> {
     const device = await this.getOwnedDeviceOrFail(deviceId, userId);
     device.powerSource = powerSource;
-    await this.deviceRepository.save(device);
-    return this.mapStatus(device);
-  }
-
-  async setBatteryChargeMode(
-    deviceId: string,
-    userId: number,
-    chargeMode: 'manual' | 'auto',
-    lowBatteryThreshold: number,
-    fullChargeThreshold: number,
-    autoSolarCharge: boolean,
-  ): Promise<DeviceStatusResponseDto> {
-    const device = await this.getOwnedDeviceOrFail(deviceId, userId);
-    device.chargeMode = chargeMode;
-    device.lowBatteryThreshold = lowBatteryThreshold;
-    device.fullChargeThreshold = fullChargeThreshold;
-    device.autoSolarCharge = autoSolarCharge;
     await this.deviceRepository.save(device);
     return this.mapStatus(device);
   }

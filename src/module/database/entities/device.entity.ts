@@ -79,20 +79,14 @@ export class DeviceEntity {
   @Column({ name: 'is_charging', type: 'boolean', default: false })
   isCharging!: boolean;
 
-  @Column({ name: 'charge_mode', type: 'varchar', length: 10, default: 'manual' })
-  chargeMode!: string; // 'manual' | 'auto'
+  @Column({ name: 'battery_mode', type: 'varchar', length: 10, default: 'manual' })
+  batteryMode!: string; // 'manual' | 'auto'
 
-  @Column({ name: 'low_battery_threshold', type: 'int', default: 20 })
-  lowBatteryThreshold!: number; // switch to AC when below X%
+  @Column({ name: 'charge_start_threshold', type: 'int', default: 20 })
+  chargeStartThreshold!: number;
 
-  @Column({ name: 'full_charge_threshold', type: 'int', default: 90 })
-  fullChargeThreshold!: number; // stop charging when above X%
-
-  @Column({ name: 'auto_solar_charge', type: 'boolean', default: true })
-  autoSolarCharge!: boolean;
-
-  @Column({ type: 'varchar', length: 20, nullable: true })
-  icon?: string | null;
+  @Column({ name: 'charge_stop_threshold', type: 'int', default: 90 })
+  chargeStopThreshold!: number;
 
   @Column({ name: 'last_maintenance_at', type: 'timestamptz', nullable: true })
   lastMaintenanceAt?: Date | null;

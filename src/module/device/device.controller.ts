@@ -277,35 +277,21 @@ export class DeviceController {
     return result;
   }
 
-  @Patch('devices/:deviceId/battery-charge-mode')
+  @Patch('devices/:deviceId/battery-settings')
   @UseGuards(JwtAuthGuard as any)
-  @ApiOperation({ summary: 'Настроить режим зарядки АКБ (manual/auto + пороги)' })
-  async setBatteryChargeMode(
+  @ApiOperation({ summary: 'Режим и пороги зарядки аккумулятора (manual/auto)' })
+  async setBatterySettings(
     @Req() req,
     @Param('deviceId') deviceId: string,
-    @Body() body: {
-      chargeMode: 'manual' | 'auto';
-      lowBatteryThreshold: number;
-      fullChargeThreshold: number;
-      autoSolarCharge: boolean;
-    },
+    @Body() body: { batteryMode: 'manual' | 'auto'; chargeStartThreshold: number; chargeStopThreshold: number },
   ) {
-    const result = await this.deviceService.setBatteryChargeMode(
+    return this.deviceService.setBatterySettings(
       deviceId,
       this.getUserId(req),
-      body.chargeMode,
-      body.lowBatteryThreshold,
-      body.fullChargeThreshold,
-      body.autoSolarCharge,
+      body.batteryMode,
+      body.chargeStartThreshold,
+      body.chargeStopThreshold,
     );
-    await this.pubLedService.setBatteryChargeMode(
-      body.chargeMode,
-      body.lowBatteryThreshold,
-      body.fullChargeThreshold,
-      body.autoSolarCharge,
-      deviceId,
-    );
-    return result;
   }
 
   @Patch('devices/:deviceId/night-guard')
