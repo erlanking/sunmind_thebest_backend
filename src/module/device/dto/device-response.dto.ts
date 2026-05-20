@@ -18,6 +18,19 @@ export class DeviceStatusResponseDto {
   mode!: 'manual' | 'auto' | 'schedule';
   lastSeen!: string | null;
   connected!: boolean;
+  deviceStatus?: string;
+  nightGuardEnabled?: boolean;
+  nightGuardStartHour?: number;
+  nightGuardStartMinute?: number;
+  nightGuardEndHour?: number;
+  nightGuardEndMinute?: number;
+  lastMaintenanceAt?: string | null;
+  firmwareVersion?: string | null;
+  powerSource?: string; // 'battery' | 'ac'
+  isCharging?: boolean;
+  batteryMode?: string; // 'manual' | 'auto'
+  chargeStartThreshold?: number;
+  chargeStopThreshold?: number;
 }
 
 export class DeviceScheduleDto {

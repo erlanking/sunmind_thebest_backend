@@ -61,6 +61,48 @@ export class DeviceDataDto {
   mode?: 'manual' | 'auto' | 'schedule';
 
   @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  latitude?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  longitude?: number | null;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['battery', 'ac', 'mains'])
+  powerSource?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isCharging?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['manual', 'auto'])
+  chargeMode?: 'manual' | 'auto';
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(5)
+  @Max(50)
+  lowBatteryThreshold?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(60)
+  @Max(100)
+  fullChargeThreshold?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  autoSolarCharge?: boolean;
+
+  @IsOptional()
   @Type(() => Date)
   createdAt?: Date;
 }

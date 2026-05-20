@@ -21,6 +21,21 @@ export class NotificationService {
     const keyPath = this.configService.get<string>('FIREBASE_SERVICE_ACCOUNT_PATH');
     const keyJson = this.configService.get<string>('FIREBASE_SERVICE_ACCOUNT_JSON');
 
+    const keyBase64 = this.configService.get<string>('FIREBASE_SERVICE_ACCOUNT_BASE64');
+
+    if (keyBase64) {
+      try {
+        const credentials = JSON.parse(Buffer.from(keyBase64, 'base64').toString());
+        return new GoogleAuth({
+          credentials,
+          scopes: ['https://www.googleapis.com/auth/firebase.messaging'],
+        });
+      } catch {
+        this.logger.error('Ошибка парсинга FIREBASE_SERVICE_ACCOUNT_BASE64');
+        return null;
+      }
+    }
+
     if (keyJson) {
       try {
         const credentials = JSON.parse(keyJson);
@@ -47,9 +62,14 @@ export class NotificationService {
   private async getAccessToken(): Promise<string | null> {
     const auth = this.getAuth();
     if (!auth) return null;
-    const client = await auth.getClient();
-    const tokenResponse = await client.getAccessToken();
-    return tokenResponse.token ?? null;
+    try {
+      const client = await auth.getClient();
+      const tokenResponse = await client.getAccessToken();
+      return tokenResponse.token ?? null;
+    } catch (err: any) {
+      this.logger.error(`Ошибка получения Firebase access token: ${err?.message ?? err}`);
+      return null;
+    }
   }
 
   async sendToToken(
@@ -60,7 +80,7 @@ export class NotificationService {
   ): Promise<boolean> {
     const accessToken = await this.getAccessToken();
     if (!accessToken) {
-      this.logger.warn('Firebase service account не настроен — уведомление не отправлено');
+      this.logger.warn('Firebase service account не настроен или недоступен — уведомление не отправлено');
       return false;
     }
 
@@ -91,25 +111,32 @@ export class NotificationService {
   }
 
   async sendToAll(title: string, body: string): Promise<{ sent: number; failed: number }> {
-    const users = await this.userService.getAllFcmTokens();
-    let sent = 0;
-    let failed = 0;
-
-    for (const user of users) {
-      const ok = await this.sendToToken(user.fcmToken, title, body, { type: 'admin' });
-      ok ? sent++ : failed++;
+    try {
+      const users = await this.userService.getAllFcmTokens();
+      let sent = 0;
+      let failed = 0;
+      for (const user of users) {
+        const ok = await this.sendToToken(user.fcmToken, title, body, { type: 'admin' });
+        ok ? sent++ : failed++;
+      }
+      this.logger.log(`Рассылка завершена: отправлено ${sent}, ошибок ${failed}`);
+      return { sent, failed };
+    } catch (err: any) {
+      this.logger.error(`sendToAll error: ${err?.stack ?? err?.message}`);
+      return { sent: 0, failed: 0 };
     }
-
-    this.logger.log(`Рассылка завершена: отправлено ${sent}, ошибок ${failed}`);
-    return { sent, failed };
   }
 
   async sendToUser(userId: number, title: string, body: string): Promise<{ sent: number; failed: number }> {
-    const users = await this.userService.getAllFcmTokens();
-    const user = users.find((u) => u.id === userId);
-
-    if (!user) return { sent: 0, failed: 1 };
-    const ok = await this.sendToToken(user.fcmToken, title, body, { type: 'admin' });
-    return ok ? { sent: 1, failed: 0 } : { sent: 0, failed: 1 };
+    try {
+      const users = await this.userService.getAllFcmTokens();
+      const user = users.find((u) => u.id === userId);
+      if (!user) return { sent: 0, failed: 1 };
+      const ok = await this.sendToToken(user.fcmToken, title, body, { type: 'admin' });
+      return ok ? { sent: 1, failed: 0 } : { sent: 0, failed: 1 };
+    } catch (err: any) {
+      this.logger.error(`sendToUser error: ${err?.stack ?? err?.message}`);
+      return { sent: 0, failed: 1 };
+    }
   }
 }

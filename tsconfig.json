@@ -18,8 +18,8 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "resolveJsonModule": true,
-    "ignoreDeprecations": "6.0",
     "baseUrl": "./src",
+    "ignoreDeprecations": "5.0",
     "esModuleInterop": true,
     "paths": {
       "@/*": ["*"],

@@ -194,20 +194,15 @@ export class PubLedService implements OnModuleInit, OnModuleDestroy {
   private async processTelemetry(message: string) {
     try {
       const data = JSON.parse(message);
-      const payload = {
-        deviceId: data.deviceId,
-        motion: data.motion,
-        brightness: data.brightness,
-        lux: data.lux,
-        batteryPercent: data.batteryPercent,
-      };
       await this.deviceService.saveTelemetry({
-        deviceId: payload.deviceId,
-        motion: payload.motion ?? false,
-        brightness: payload.brightness ?? 0,
-        lux: payload.lux ?? 0,
-        batteryPercent: payload.batteryPercent ?? null,
-        manualMode: false,
+        deviceId: data.deviceId,
+        motion: data.motion ?? false,
+        brightness: data.brightness ?? 0,
+        lux: data.lux ?? 0,
+        batteryPercent: data.batteryPercent ?? null,
+        manualMode: data.manualMode ?? false,
+        latitude: data.latitude ?? null,
+        longitude: data.longitude ?? null,
       } as any);
     } catch (error) {
       this.logger.error('Ошибка обработки telemetry', (error as Error).message);
@@ -382,6 +377,47 @@ export class PubLedService implements OnModuleInit, OnModuleDestroy {
           resolve();
         }
       });
+    });
+  }
+
+  async setCharging(isCharging: boolean, deviceId?: string): Promise<void> {
+    await this.ensureConnected();
+    const topic = deviceId ? `home/${deviceId}/charge` : 'home/light/charge';
+    const value = isCharging ? 'true' : 'false';
+    this.client.publish(topic, value, { qos: 1 }, (error) => {
+      if (error) this.logger.error('Ошибка отправки charge:', error.message);
+      else this.logger.log(`✅ charge ${value} → ${topic}`);
+    });
+  }
+
+  async setPowerSource(powerSource: 'battery' | 'ac', deviceId?: string): Promise<void> {
+    await this.ensureConnected();
+    const topic = deviceId ? `home/${deviceId}/power-source` : 'home/light/power-source';
+    this.client.publish(topic, powerSource, { qos: 1 }, (error) => {
+      if (error) {
+        this.logger.error('Ошибка отправки power-source:', error.message);
+      } else {
+        this.logger.log(`✅ power-source ${powerSource} → ${topic}`);
+      }
+    });
+  }
+
+  async setBatteryChargeMode(
+    chargeMode: 'manual' | 'auto',
+    lowBatteryThreshold: number,
+    fullChargeThreshold: number,
+    autoSolarCharge: boolean,
+    deviceId?: string,
+  ): Promise<void> {
+    await this.ensureConnected();
+    const topic = deviceId ? `home/${deviceId}/battery-mode` : 'home/light/battery-mode';
+    const payload = JSON.stringify({ chargeMode, lowBatteryThreshold, fullChargeThreshold, autoSolarCharge });
+    this.client.publish(topic, payload, { qos: 1 }, (error) => {
+      if (error) {
+        this.logger.error('Ошибка отправки battery-mode:', error.message);
+      } else {
+        this.logger.log(`✅ battery-mode → ${topic}: ${payload}`);
+      }
     });
   }
 

@@ -184,4 +184,146 @@ export class DeviceController {
       dto,
     );
   }
+
+  @Get('devices/:deviceId/errors')
+  @UseGuards(JwtAuthGuard as any)
+  @ApiOperation({ summary: 'История ошибок устройства (7 дней)' })
+  async getErrors(@Req() req, @Param('deviceId') deviceId: string) {
+    return this.deviceService.getErrors(deviceId, this.getUserId(req));
+  }
+
+  @Patch('devices/:deviceId/errors/:errorId/resolve')
+  @UseGuards(JwtAuthGuard as any)
+  @ApiOperation({ summary: 'Отметить ошибку как решённую' })
+  async resolveError(
+    @Req() req,
+    @Param('deviceId') deviceId: string,
+    @Param('errorId') errorId: string,
+  ) {
+    return this.deviceService.resolveError(Number(errorId), deviceId, this.getUserId(req));
+  }
+
+  @Get('devices/:deviceId/maintenance')
+  @UseGuards(JwtAuthGuard as any)
+  @ApiOperation({ summary: 'История обслуживания устройства' })
+  async getMaintenanceHistory(@Req() req, @Param('deviceId') deviceId: string) {
+    return this.deviceService.getMaintenanceHistory(deviceId, this.getUserId(req));
+  }
+
+  @Post('devices/:deviceId/maintenance')
+  @UseGuards(JwtAuthGuard as any)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Записать обслуживание устройства' })
+  async recordMaintenance(
+    @Req() req,
+    @Param('deviceId') deviceId: string,
+    @Body() body: { notes?: string },
+  ) {
+    return this.deviceService.recordMaintenance(
+      deviceId,
+      this.getUserId(req),
+      body.notes,
+    );
+  }
+
+  @Delete('devices/:deviceId/maintenance/:maintenanceId')
+  @UseGuards(JwtAuthGuard as any)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Удалить запись обслуживания' })
+  async deleteMaintenance(
+    @Req() req,
+    @Param('deviceId') deviceId: string,
+    @Param('maintenanceId') maintenanceId: string,
+  ) {
+    return this.deviceService.deleteMaintenance(
+      deviceId,
+      this.getUserId(req),
+      Number(maintenanceId),
+    );
+  }
+
+  @Patch('devices/:deviceId/charge')
+  @UseGuards(JwtAuthGuard as any)
+  @ApiOperation({ summary: 'Включить/выключить зарядку аккумулятора' })
+  async setCharging(
+    @Req() req,
+    @Param('deviceId') deviceId: string,
+    @Body() body: { isCharging: boolean },
+  ) {
+    const result = await this.deviceService.setCharging(
+      deviceId,
+      this.getUserId(req),
+      body.isCharging,
+    );
+    await this.pubLedService.setCharging(body.isCharging, deviceId);
+    return result;
+  }
+
+  @Patch('devices/:deviceId/power-source')
+  @UseGuards(JwtAuthGuard as any)
+  @ApiOperation({ summary: 'Переключить источник питания: battery | ac' })
+  async setPowerSource(
+    @Req() req,
+    @Param('deviceId') deviceId: string,
+    @Body() body: { powerSource: 'battery' | 'ac' },
+  ) {
+    const result = await this.deviceService.setPowerSource(
+      deviceId,
+      this.getUserId(req),
+      body.powerSource,
+    );
+    // Отправляем MQTT команду на реле ESP32
+    await this.pubLedService.setPowerSource(body.powerSource, deviceId);
+    return result;
+  }
+
+  @Patch('devices/:deviceId/battery-settings')
+  @UseGuards(JwtAuthGuard as any)
+  @ApiOperation({ summary: 'Режим и пороги зарядки аккумулятора (manual/auto)' })
+  async setBatterySettings(
+    @Req() req,
+    @Param('deviceId') deviceId: string,
+    @Body() body: { batteryMode: 'manual' | 'auto'; chargeStartThreshold: number; chargeStopThreshold: number },
+  ) {
+    return this.deviceService.setBatterySettings(
+      deviceId,
+      this.getUserId(req),
+      body.batteryMode,
+      body.chargeStartThreshold,
+      body.chargeStopThreshold,
+    );
+  }
+
+  @Patch('devices/:deviceId/night-guard')
+  @UseGuards(JwtAuthGuard as any)
+  @ApiOperation({ summary: 'Включить/выключить ночной охранный режим' })
+  async toggleNightGuard(
+    @Req() req,
+    @Param('deviceId') deviceId: string,
+    @Body() body: { enabled: boolean },
+  ) {
+    return this.deviceService.toggleNightGuard(
+      deviceId,
+      this.getUserId(req),
+      body.enabled,
+    );
+  }
+
+  @Patch('devices/:deviceId/night-guard-schedule')
+  @UseGuards(JwtAuthGuard as any)
+  @ApiOperation({ summary: 'Настроить время активности охранного режима' })
+  async setNightGuardSchedule(
+    @Req() req,
+    @Param('deviceId') deviceId: string,
+    @Body() body: { startHour: number; startMinute: number; endHour: number; endMinute: number },
+  ) {
+    return this.deviceService.setNightGuardSchedule(
+      deviceId,
+      this.getUserId(req),
+      body.startHour,
+      body.startMinute,
+      body.endHour,
+      body.endMinute,
+    );
+  }
 }

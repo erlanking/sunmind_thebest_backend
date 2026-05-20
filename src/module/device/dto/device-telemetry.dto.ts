@@ -10,6 +10,7 @@ export class DeviceTelemetryResponseDto extends DeviceDataDto {
   temperature?: number | null;
   humidity?: number | null;
   manualMode!: boolean;
+  powerSource?: string;
   createdAt!: Date;
 }
 

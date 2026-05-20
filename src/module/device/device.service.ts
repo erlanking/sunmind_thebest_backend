@@ -4,6 +4,8 @@ import { Between, Repository } from 'typeorm';
 import { DeviceEntity } from '../database/entities/device.entity';
 import { DeviceScheduleEntity } from '../database/entities/device-schedule.entity';
 import { DeviceTelemetryEntity } from '../database/entities/device-telemetry.entity';
+import { DeviceErrorEntity } from '../database/entities/device-error.entity';
+import { DeviceMaintenanceEntity } from '../database/entities/device-maintenance.entity';
 import { DeviceDataDto } from './dto/device-data.dto';
 import {
   DeviceScheduleDto,
@@ -19,6 +21,7 @@ import { ZoneService } from '../zone/zone.service';
 import { UserService } from '../user/user.service';
 import { Inject, forwardRef } from '@nestjs/common';
 import { UpdateDeviceDto } from './dto/update-device.dto';
+import { DeviceAlertService } from './device-alert.service';
 
 const PERIOD_MAP = {
   day: 1,
@@ -38,9 +41,14 @@ export class DeviceService {
     private readonly scheduleRepository: Repository<DeviceScheduleEntity>,
     @InjectRepository(DeviceTelemetryEntity)
     private readonly telemetryRepository: Repository<DeviceTelemetryEntity>,
+    @InjectRepository(DeviceErrorEntity)
+    private readonly errorRepository: Repository<DeviceErrorEntity>,
+    @InjectRepository(DeviceMaintenanceEntity)
+    private readonly maintenanceRepository: Repository<DeviceMaintenanceEntity>,
     @Inject(forwardRef(() => ZoneService))
     private readonly zoneService: ZoneService,
     private readonly userService: UserService,
+    private readonly alertService: DeviceAlertService,
   ) {}
 
   async registerDevice(
@@ -182,8 +190,43 @@ export class DeviceService {
     device.humidity = dto.humidity ?? undefined;
     device.manualMode = resolvedManualMode;
     device.lastSeen = createdAt;
+    if (dto.latitude != null && dto.longitude != null) {
+      device.latitude = dto.latitude;
+      device.longitude = dto.longitude;
+    }
 
     await this.deviceRepository.save(device);
+
+    // Auto-charge logic
+    if (device.batteryPercent != null && (device.batteryMode ?? 'manual') === 'auto') {
+      const startThr = device.chargeStartThreshold ?? 20;
+      const stopThr = device.chargeStopThreshold ?? 90;
+      if (device.batteryPercent <= startThr && !device.isCharging) {
+        device.isCharging = true;
+        device.powerSource = 'ac';
+        await this.deviceRepository.save(device);
+        if (device.userId) this.alertService.notifyAcSwitch(device).catch(() => {});
+      } else if (device.batteryPercent >= stopThr && device.isCharging) {
+        device.isCharging = false;
+        device.powerSource = 'battery';
+        await this.deviceRepository.save(device);
+      }
+    } else if (
+      (device.batteryMode ?? 'manual') === 'manual' &&
+      device.batteryPercent != null &&
+      device.batteryPercent <= 20 &&
+      (device.powerSource ?? 'battery') === 'battery'
+    ) {
+      // Fallback: critically low in manual mode — force AC
+      device.powerSource = 'ac';
+      await this.deviceRepository.save(device);
+      if (device.userId) {
+        this.alertService.notifyAcSwitch(device).catch(() => {});
+      }
+    }
+
+    // Check alerts asynchronously (don't block response)
+    this.alertService.checkAndAlert(device).catch(() => {});
 
     const telemetry = this.telemetryRepository.create({
       deviceId: dto.deviceId,
@@ -195,6 +238,7 @@ export class DeviceService {
       temperature: dto.temperature ?? undefined,
       humidity: dto.humidity ?? undefined,
       manualMode: resolvedManualMode,
+      powerSource: device.powerSource ?? 'battery',
       createdAt,
     });
     await this.telemetryRepository.save(telemetry);
@@ -277,6 +321,7 @@ export class DeviceService {
       temperature: row.temperature ?? null,
       humidity: row.humidity ?? null,
       manualMode: row.manualMode,
+      powerSource: row.powerSource ?? 'battery',
       createdAt: new Date(row.createdAt),
     }));
   }
@@ -475,7 +520,129 @@ export class DeviceService {
       mode: device.manualMode ? 'manual' : 'auto',
       lastSeen: lastSeen ? lastSeen.toISOString() : null,
       connected,
+      deviceStatus: this.alertService.computeStatus(device),
+      nightGuardEnabled: device.nightGuardEnabled ?? false,
+      nightGuardStartHour: device.nightGuardStartHour ?? 22,
+      nightGuardStartMinute: device.nightGuardStartMinute ?? 0,
+      nightGuardEndHour: device.nightGuardEndHour ?? 6,
+      nightGuardEndMinute: device.nightGuardEndMinute ?? 0,
+      lastMaintenanceAt: device.lastMaintenanceAt?.toISOString() ?? null,
+      firmwareVersion: device.firmwareVersion ?? null,
+      powerSource: device.powerSource ?? 'battery',
+      isCharging: device.isCharging ?? false,
+      batteryMode: device.batteryMode ?? 'manual',
+      chargeStartThreshold: device.chargeStartThreshold ?? 20,
+      chargeStopThreshold: device.chargeStopThreshold ?? 90,
     };
+  }
+
+  async setBatterySettings(
+    deviceId: string,
+    userId: number,
+    batteryMode: 'manual' | 'auto',
+    chargeStartThreshold: number,
+    chargeStopThreshold: number,
+  ): Promise<DeviceStatusResponseDto> {
+    const device = await this.getOwnedDeviceOrFail(deviceId, userId);
+    device.batteryMode = batteryMode;
+    device.chargeStartThreshold = chargeStartThreshold;
+    device.chargeStopThreshold = chargeStopThreshold;
+    await this.deviceRepository.save(device);
+    return this.mapStatus(device);
+  }
+
+  async setCharging(deviceId: string, userId: number, isCharging: boolean): Promise<DeviceStatusResponseDto> {
+    const device = await this.getOwnedDeviceOrFail(deviceId, userId);
+    device.isCharging = isCharging;
+    await this.deviceRepository.save(device);
+    return this.mapStatus(device);
+  }
+
+  async setPowerSource(deviceId: string, userId: number, powerSource: 'battery' | 'ac'): Promise<DeviceStatusResponseDto> {
+    const device = await this.getOwnedDeviceOrFail(deviceId, userId);
+    device.powerSource = powerSource;
+    await this.deviceRepository.save(device);
+    return this.mapStatus(device);
+  }
+
+  async getErrors(deviceId: string, userId: number): Promise<DeviceErrorEntity[]> {
+    await this.getOwnedDeviceOrFail(deviceId, userId);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    return this.errorRepository.find({
+      where: { deviceId, createdAt: Between(sevenDaysAgo, new Date()) },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async resolveError(errorId: number, deviceId: string, userId: number): Promise<DeviceErrorEntity> {
+    await this.getOwnedDeviceOrFail(deviceId, userId);
+    const error = await this.errorRepository.findOne({ where: { id: errorId, deviceId } });
+    if (!error) {
+      throw new HttpException('Ошибка не найдена', HttpStatus.NOT_FOUND);
+    }
+    error.status = 'resolved';
+    error.resolvedAt = new Date();
+    return this.errorRepository.save(error);
+  }
+
+  async recordMaintenance(
+    deviceId: string,
+    userId: number,
+    notes?: string,
+  ): Promise<DeviceMaintenanceEntity> {
+    const device = await this.getOwnedDeviceOrFail(deviceId, userId);
+
+    const record = this.maintenanceRepository.create({
+      deviceId,
+      triggerType: 'manual',
+      notes: notes ?? null,
+      performedBy: userId,
+    });
+    await this.maintenanceRepository.save(record);
+
+    device.lastMaintenanceAt = new Date();
+    await this.deviceRepository.save(device);
+
+    return record;
+  }
+
+  async getMaintenanceHistory(deviceId: string, userId: number): Promise<DeviceMaintenanceEntity[]> {
+    await this.getOwnedDeviceOrFail(deviceId, userId);
+    return this.maintenanceRepository.find({
+      where: { deviceId },
+      order: { createdAt: 'DESC' },
+      take: 50,
+    });
+  }
+
+  async deleteMaintenance(deviceId: string, userId: number, maintenanceId: number): Promise<void> {
+    await this.getOwnedDeviceOrFail(deviceId, userId);
+    await this.maintenanceRepository.delete({ id: maintenanceId, deviceId });
+  }
+
+  async toggleNightGuard(deviceId: string, userId: number, enabled: boolean): Promise<DeviceStatusResponseDto> {
+    const device = await this.getOwnedDeviceOrFail(deviceId, userId);
+    device.nightGuardEnabled = enabled;
+    await this.deviceRepository.save(device);
+    return this.mapStatus(device);
+  }
+
+  async setNightGuardSchedule(
+    deviceId: string,
+    userId: number,
+    startHour: number,
+    startMinute: number,
+    endHour: number,
+    endMinute: number,
+  ): Promise<DeviceStatusResponseDto> {
+    const device = await this.getOwnedDeviceOrFail(deviceId, userId);
+    device.nightGuardStartHour = startHour;
+    device.nightGuardStartMinute = startMinute;
+    device.nightGuardEndHour = endHour;
+    device.nightGuardEndMinute = endMinute;
+    device.nightGuardEnabled = true; // автоматически включаем при настройке
+    await this.deviceRepository.save(device);
+    return this.mapStatus(device);
   }
 
   private mapSchedule(
