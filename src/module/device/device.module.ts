@@ -25,7 +25,7 @@ import { AdminModule } from '../admin/admin.module';
     ]),
     forwardRef(() => ZoneModule),
     forwardRef(() => PubLedModule),
-    AdminModule,
+    forwardRef(() => AdminModule),
     UserModule,
     AuthModule,
   ],
