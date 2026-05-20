@@ -12,7 +12,7 @@ import { ZoneModule } from '../zone/zone.module';
 import { UserModule } from '../user/user.module';
 import { AuthModule } from '../auth/auth.module';
 import { PubLedModule } from '../pubLed/pubLed.module';
-import { AdminModule } from '../admin/admin.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
@@ -25,7 +25,7 @@ import { AdminModule } from '../admin/admin.module';
     ]),
     forwardRef(() => ZoneModule),
     forwardRef(() => PubLedModule),
-    forwardRef(() => AdminModule),
+    NotificationModule,
     UserModule,
     AuthModule,
   ],
