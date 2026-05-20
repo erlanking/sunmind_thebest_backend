@@ -22,6 +22,7 @@ import { UserService } from '../user/user.service';
 import { Inject, forwardRef } from '@nestjs/common';
 import { UpdateDeviceDto } from './dto/update-device.dto';
 import { DeviceAlertService } from './device-alert.service';
+import { PubLedService } from '../pubLed/pubLed.service';
 
 const PERIOD_MAP = {
   day: 1,
@@ -49,6 +50,8 @@ export class DeviceService {
     private readonly zoneService: ZoneService,
     private readonly userService: UserService,
     private readonly alertService: DeviceAlertService,
+    @Inject(forwardRef(() => PubLedService))
+    private readonly pubLedService: PubLedService,
   ) {}
 
   async registerDevice(
@@ -206,10 +209,14 @@ export class DeviceService {
         device.powerSource = 'ac';
         await this.deviceRepository.save(device);
         if (device.userId) this.alertService.notifyAcSwitch(device).catch(() => {});
+        this.pubLedService.setPowerSource('ac', device.deviceId).catch(() => {});
+        this.pubLedService.setCharging(true, device.deviceId).catch(() => {});
       } else if (device.batteryPercent >= stopThr && device.isCharging) {
         device.isCharging = false;
         device.powerSource = 'battery';
         await this.deviceRepository.save(device);
+        this.pubLedService.setPowerSource('battery', device.deviceId).catch(() => {});
+        this.pubLedService.setCharging(false, device.deviceId).catch(() => {});
       }
     } else if (
       (device.batteryMode ?? 'manual') === 'manual' &&
@@ -223,6 +230,7 @@ export class DeviceService {
       if (device.userId) {
         this.alertService.notifyAcSwitch(device).catch(() => {});
       }
+      this.pubLedService.setPowerSource('ac', device.deviceId).catch(() => {});
     }
 
     // Check alerts asynchronously (don't block response)
