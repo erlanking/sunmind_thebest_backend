@@ -421,6 +421,21 @@ export class PubLedService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  async sendBatterySettings(
+    deviceId: string,
+    chargeMode: 'manual' | 'auto',
+    chargeStartPct: number,
+    chargeStopPct: number,
+  ): Promise<void> {
+    await this.ensureConnected();
+    const modeTopic = `home/${deviceId}/battery-mode`;
+    const thresholdsTopic = `home/${deviceId}/battery-thresholds`;
+    const thresholds = JSON.stringify({ charge_start: chargeStartPct, charge_stop: chargeStopPct });
+    this.client.publish(modeTopic, chargeMode, { qos: 1 });
+    this.client.publish(thresholdsTopic, thresholds, { qos: 1 });
+    this.logger.log(`✅ battery → ${deviceId}: mode=${chargeMode}, thresholds=${thresholds}`);
+  }
+
   // Установить mock статус для тестирования
   setMockStatus(ledState: 'ON' | 'OFF' = 'OFF'): void {
     this.deviceStatus = {

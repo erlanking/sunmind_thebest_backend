@@ -294,6 +294,30 @@ export class DeviceController {
     );
   }
 
+  @Patch('devices/:deviceId/battery-charge-mode')
+  @UseGuards(JwtAuthGuard as any)
+  @ApiOperation({ summary: 'Режим и пороги зарядки (формат приложения)' })
+  async setBatteryChargeMode(
+    @Req() req,
+    @Param('deviceId') deviceId: string,
+    @Body() body: { chargeMode: 'manual' | 'auto'; lowBatteryThreshold: number; fullChargeThreshold: number; autoSolarCharge?: boolean },
+  ) {
+    const result = await this.deviceService.setBatterySettings(
+      deviceId,
+      this.getUserId(req),
+      body.chargeMode,
+      body.lowBatteryThreshold,
+      body.fullChargeThreshold,
+    );
+    await this.pubLedService.sendBatterySettings(
+      deviceId,
+      body.chargeMode,
+      body.lowBatteryThreshold,
+      body.fullChargeThreshold,
+    );
+    return result;
+  }
+
   @Patch('devices/:deviceId/night-guard')
   @UseGuards(JwtAuthGuard as any)
   @ApiOperation({ summary: 'Включить/выключить ночной охранный режим' })
