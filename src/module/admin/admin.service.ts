@@ -5,6 +5,7 @@ import { UserEntity } from '../database/entities/user.entity';
 import { DeviceEntity } from '../database/entities/device.entity';
 import { DeviceTelemetryEntity } from '../database/entities/device-telemetry.entity';
 import { ZoneEntity } from '../database/entities/zone.entity';
+import { PubLedService } from '../pubLed/pubLed.service';
 
 @Injectable()
 export class AdminService {
@@ -17,6 +18,7 @@ export class AdminService {
     private readonly zones: Repository<ZoneEntity>,
     @InjectRepository(DeviceTelemetryEntity)
     private readonly telemetry: Repository<DeviceTelemetryEntity>,
+    private readonly pubLed: PubLedService,
   ) {}
 
   async getStats() {
@@ -249,5 +251,25 @@ export class AdminService {
       online: new Date(d.lastSeen!).getTime() > twoMinutesAgo,
       lastSeen: d.lastSeen,
     }));
+  }
+
+  async turnOnDevice(deviceId: string) {
+    await this.pubLed.turnOn(deviceId);
+    return { success: true };
+  }
+
+  async turnOffDevice(deviceId: string) {
+    await this.pubLed.turnOff(deviceId);
+    return { success: true };
+  }
+
+  async setDeviceBrightness(deviceId: string, value: number) {
+    await this.pubLed.setBrightness(value, deviceId);
+    return { success: true };
+  }
+
+  async setDeviceMode(deviceId: string, mode: 'manual' | 'auto') {
+    await this.pubLed.setMode(mode, deviceId);
+    return { success: true };
   }
 }

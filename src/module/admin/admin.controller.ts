@@ -92,6 +92,40 @@ export class AdminController {
     @Body() body: { icon: string },
   ) { return this.adminService.setDeviceIcon(deviceId, body.icon); }
 
+  @Post('devices/:deviceId/on')
+  @UseGuards(AdminGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Включить устройство' })
+  turnOn(@Param('deviceId') deviceId: string) {
+    return this.adminService.turnOnDevice(deviceId);
+  }
+
+  @Post('devices/:deviceId/off')
+  @UseGuards(AdminGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Выключить устройство' })
+  turnOff(@Param('deviceId') deviceId: string) {
+    return this.adminService.turnOffDevice(deviceId);
+  }
+
+  @Post('devices/:deviceId/brightness')
+  @UseGuards(AdminGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Установить яркость устройства' })
+  setBrightness(
+    @Param('deviceId') deviceId: string,
+    @Body() body: { value: number },
+  ) { return this.adminService.setDeviceBrightness(deviceId, body.value); }
+
+  @Post('devices/:deviceId/mode')
+  @UseGuards(AdminGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Установить режим устройства (manual/auto)' })
+  setMode(
+    @Param('deviceId') deviceId: string,
+    @Body() body: { mode: 'manual' | 'auto' },
+  ) { return this.adminService.setDeviceMode(deviceId, body.mode); }
+
   @Get('unowned')
   @UseGuards(AdminGuard)
   getUnowned() { return this.adminService.getUnownedDevices(); }
@@ -187,6 +221,14 @@ tr:hover td{background:#1e2128}
 /* Buttons */
 .del-btn{background:transparent;border:1px solid #3f1515;color:#f87171;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:11px}
 .del-btn:hover{background:#3f1515}
+.ctrl-btn{background:transparent;border:1px solid #2a2d35;color:#e2e8f0;padding:3px 8px;border-radius:6px;cursor:pointer;font-size:11px;transition:all .15s}
+.ctrl-btn:hover{border-color:#f6c343;color:#f6c343}
+.ctrl-btn.on{border-color:#14532d;color:#4ade80}
+.ctrl-btn.off{border-color:#3f1515;color:#f87171}
+.ctrl-btn.manual{border-color:#7c5e10;color:#f6c343}
+.ctrl-btn.auto{border-color:#1a2e1a;color:#4ade80}
+.ctrl-sep{color:#2a2d35;margin:0 2px}
+input[type=range].brt-slider{width:80px;accent-color:#f6c343;cursor:pointer;vertical-align:middle}
 input[type=email],input[type=password],input[type=text]{width:100%;padding:10px 14px;background:#0d0f14;border:1px solid #2a2d35;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:12px}
 input:focus{outline:none;border-color:#f6c343}
 .srv-btn{padding:6px 14px;border:1px solid #2a2d35;background:transparent;color:#858a95;border-radius:8px;cursor:pointer;font-size:13px;transition:all .15s}
@@ -544,7 +586,7 @@ async function loadDevices() {
   document.getElementById('devicesTable').innerHTML =
     \`<table><thead><tr>
       <th>ID</th><th>Название</th><th>Владелец</th><th>Зона</th>
-      <th>Статус</th><th>Батарея</th><th>Яркость</th><th>Lux</th><th>Режим</th><th>Последняя связь</th><th></th>
+      <th>Статус</th><th>Батарея</th><th>Яркость</th><th>Lux</th><th>Режим</th><th>Последняя связь</th><th>Управление</th><th></th>
     </tr></thead><tbody>\${data.map(d => \`<tr>
       <td style="font-family:monospace;color:#f6c343">\${d.deviceId}</td>
       <td>\${d.name ?? '—'}</td>
@@ -556,6 +598,15 @@ async function loadDevices() {
       <td>\${d.lux !== null ? d.lux + ' lx' : '—'}</td>
       <td><span class="badge \${d.manualMode ? 'b-manual' : 'b-auto'}">\${d.manualMode ? 'Ручной' : 'Авто'}</span></td>
       <td>\${d.lastSeen ? new Date(d.lastSeen).toLocaleString('ru') : '—'}</td>
+      <td style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;min-width:260px">
+        <button class="ctrl-btn on" onclick="ctrlDevice('\${d.deviceId}','on')">ВКЛ</button>
+        <button class="ctrl-btn off" onclick="ctrlDevice('\${d.deviceId}','off')">ВЫКЛ</button>
+        <span class="ctrl-sep">|</span>
+        <input type="range" class="brt-slider" min="0" max="100" value="\${d.brightness ?? 50}"
+          onchange="ctrlBrightness('\${d.deviceId}',this.value)" title="Яркость">
+        <span class="ctrl-sep">|</span>
+        <button class="ctrl-btn \${d.manualMode ? 'auto' : 'manual'}" onclick="ctrlMode('\${d.deviceId}','\${d.manualMode ? 'auto' : 'manual'}')">\${d.manualMode ? '→ Авто' : '→ Ручной'}</button>
+      </td>
       <td style="display:flex;gap:6px">
         <button class="del-btn" style="border-color:#1e3a5f;color:#60a5fa" onclick="openLocModal('\${d.deviceId}',\${JSON.stringify(d.name ?? d.deviceId)},\${d.latitude},\${d.longitude})">\${d.latitude != null ? '📍' : '＋'} Координаты</button>
         <button class="del-btn" onclick="delDevice('\${d.deviceId}')">Удалить</button>
@@ -600,6 +651,29 @@ async function loadUsers() {
       <td>\${new Date(u.createdAt).toLocaleString('ru')}</td>
       <td><button class="del-btn" onclick="delUser(\${u.id},'\${u.email}')">Удалить</button></td>
     </tr>\`).join('')}</tbody></table>\`;
+}
+
+async function ctrlDevice(deviceId, action) {
+  await fetch(BASE_URL + '/admin/devices/' + encodeURIComponent(deviceId) + '/' + action, {
+    method: 'POST', headers: { Authorization: 'Bearer ' + token },
+  });
+}
+
+async function ctrlBrightness(deviceId, value) {
+  await fetch(BASE_URL + '/admin/devices/' + encodeURIComponent(deviceId) + '/brightness', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ value: Number(value) }),
+  });
+}
+
+async function ctrlMode(deviceId, mode) {
+  await fetch(BASE_URL + '/admin/devices/' + encodeURIComponent(deviceId) + '/mode', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ mode }),
+  });
+  loadDevices();
 }
 
 async function delDevice(deviceId) {

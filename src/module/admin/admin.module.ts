@@ -13,11 +13,13 @@ import { DeviceErrorEntity } from '../database/entities/device-error.entity';
 import { DeviceMaintenanceEntity } from '../database/entities/device-maintenance.entity';
 import { ZoneEntity } from '../database/entities/zone.entity';
 import { UserModule } from '../user/user.module';
+import { PubLedModule } from '../pubLed/pubLed.module';
 
 @Module({
   imports: [
     ConfigModule,
     UserModule,
+    PubLedModule,
     TypeOrmModule.forFeature([
       UserEntity,
       DeviceEntity,
