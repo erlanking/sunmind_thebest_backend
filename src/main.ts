@@ -22,11 +22,7 @@ async function start() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  const port = process.env.PORT;
-
-  if (!port) {
-    throw new Error('PORT is not defined');
-  }
+  const port = process.env.PORT ?? 10000;
 
   await app.listen(port, '0.0.0.0');
 

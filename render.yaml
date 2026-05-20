@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: sunmind-backend
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_SSL
+        value: true
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 24h
+      - key: MQTT_URL
+        value: mqtt://broker.hivemq.com
+      - key: MQTT_PORT
+        value: 1883
+      - key: DEVICE_POWER_WATTS
+        value: 5
+      - key: BATTERY_CAPACITY_WH
+        value: 168
