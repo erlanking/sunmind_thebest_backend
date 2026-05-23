@@ -254,16 +254,22 @@ export class AdminService {
   }
 
   async turnOnDevice(deviceId: string) {
+    await this.pubLed.setMode('manual', deviceId);
+    await new Promise((r) => setTimeout(r, 300));
     await this.pubLed.turnOn(deviceId);
     return { success: true };
   }
 
   async turnOffDevice(deviceId: string) {
+    await this.pubLed.setMode('manual', deviceId);
+    await new Promise((r) => setTimeout(r, 300));
     await this.pubLed.turnOff(deviceId);
     return { success: true };
   }
 
   async setDeviceBrightness(deviceId: string, value: number) {
+    await this.pubLed.setMode('manual', deviceId);
+    await new Promise((r) => setTimeout(r, 300));
     await this.pubLed.setBrightness(value, deviceId);
     return { success: true };
   }

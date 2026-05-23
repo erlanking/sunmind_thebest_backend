@@ -602,7 +602,7 @@ async function loadDevices() {
         <button class="ctrl-btn on" onclick="ctrlDevice('\${d.deviceId}','on')">ВКЛ</button>
         <button class="ctrl-btn off" onclick="ctrlDevice('\${d.deviceId}','off')">ВЫКЛ</button>
         <span class="ctrl-sep">|</span>
-        <input type="range" class="brt-slider" min="0" max="100" value="\${d.brightness ?? 50}"
+        <input type="range" class="brt-slider" min="0" max="255" value="\${d.brightness ?? 128}"
           onchange="ctrlBrightness('\${d.deviceId}',this.value)" title="Яркость">
         <span class="ctrl-sep">|</span>
         <button class="ctrl-btn \${d.manualMode ? 'auto' : 'manual'}" onclick="ctrlMode('\${d.deviceId}','\${d.manualMode ? 'auto' : 'manual'}')">\${d.manualMode ? '→ Авто' : '→ Ручной'}</button>
