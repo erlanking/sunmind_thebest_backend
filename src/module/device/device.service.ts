@@ -23,6 +23,7 @@ import { Inject, forwardRef } from '@nestjs/common';
 import { UpdateDeviceDto } from './dto/update-device.dto';
 import { DeviceAlertService } from './device-alert.service';
 import { PubLedService } from '../pubLed/pubLed.service';
+import { PanelService } from '../panel/panel.service';
 
 const PERIOD_MAP = {
   day: 1,
@@ -52,6 +53,8 @@ export class DeviceService {
     private readonly alertService: DeviceAlertService,
     @Inject(forwardRef(() => PubLedService))
     private readonly pubLedService: PubLedService,
+    @Inject(forwardRef(() => PanelService))
+    private readonly panelService: PanelService,
   ) {}
 
   async registerDevice(
@@ -106,6 +109,9 @@ export class DeviceService {
     device.zoneId = zone?.id ?? null;
     device.userId = userId;
     await this.deviceRepository.save(device);
+
+    // Auto-create panels (LED1 + LED2) for this controller if not yet created
+    this.panelService.ensurePanelsForDevice(device.deviceId, userId).catch(() => {});
 
     return {
       status: 'success',

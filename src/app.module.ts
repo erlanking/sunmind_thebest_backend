@@ -15,6 +15,7 @@ import { ReviewModule } from './module/review/review.module';
 import { DeviceModule } from './module/device/device.module';
 import { ZoneModule } from './module/zone/zone.module';
 import { AdminModule } from './module/admin/admin.module';
+import { PanelModule } from './module/panel/panel.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { AdminModule } from './module/admin/admin.module';
     DeviceModule,
     ZoneModule,
     AdminModule,
+    PanelModule,
   ],
   controllers: [AppController],
   providers: [AppService, CustomLogger],

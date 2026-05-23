@@ -421,6 +421,32 @@ export class PubLedService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  async controlPanel(
+    deviceId: string,
+    panelIndex: number,
+    state?: boolean,
+    brightness?: number,
+  ): Promise<void> {
+    await this.ensureConnected();
+    const suffix = panelIndex === 0 ? '' : '2';
+
+    if (state !== undefined) {
+      const topic = `home/${deviceId}/control${suffix}`;
+      this.client.publish(topic, state ? 'ON' : 'OFF', { qos: 1 }, (err) => {
+        if (err) this.logger.error(`Ошибка panel control${suffix}:`, err.message);
+        else this.logger.log(`✅ panel ${state ? 'ON' : 'OFF'} → ${topic}`);
+      });
+    }
+
+    if (brightness !== undefined) {
+      const topic = `home/${deviceId}/brightness${suffix}`;
+      this.client.publish(topic, String(brightness), { qos: 1 }, (err) => {
+        if (err) this.logger.error(`Ошибка panel brightness${suffix}:`, err.message);
+        else this.logger.log(`✅ panel brightness ${brightness} → ${topic}`);
+      });
+    }
+  }
+
   async sendBatterySettings(
     deviceId: string,
     chargeMode: 'manual' | 'auto',

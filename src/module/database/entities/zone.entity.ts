@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { DeviceEntity } from './device.entity';
 import { UserEntity } from './user.entity';
+import { PanelEntity } from './panel.entity';
 
 @Entity('zones')
 export class ZoneEntity {
@@ -25,6 +26,9 @@ export class ZoneEntity {
 
   @OneToMany(() => DeviceEntity, (device) => device.zone)
   devices?: DeviceEntity[];
+
+  @OneToMany(() => PanelEntity, (panel) => panel.zone)
+  panels?: PanelEntity[];
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;

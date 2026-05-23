@@ -26,6 +26,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
           ssl: shouldUseSsl ? { rejectUnauthorized: false } : false,
           autoLoadEntities: true,
           synchronize: true,
+          extra: {
+            family: 4,
+            connectionTimeoutMillis: 10000,
+            idleTimeoutMillis: 30000,
+            max: 10,
+          },
         };
       },
     }),
