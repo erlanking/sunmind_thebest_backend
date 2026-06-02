@@ -89,6 +89,7 @@ export class PanelService {
         panel.panelIndex,
         dto.state,
         dto.brightness,
+        dto.mode,
       );
     } catch (_) {}
 

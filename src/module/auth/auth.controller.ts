@@ -152,4 +152,15 @@ export class AuthController {
     this.logger.debug(`[CONTROLLER] updateMySettings`, refId);
     return this.authService.updateMySettings(this.getUserId(req), dto, refId);
   }
+
+  @Patch('me/avatar')
+  @UseGuards(JwtAuthGuard as any)
+  async updateAvatar(
+    @Req() req,
+    @Body() body: { avatar: string | null },
+    @RefId() refId: string,
+  ) {
+    this.logger.debug(`[CONTROLLER] updateAvatar`, refId);
+    return this.authService.updateAvatar(this.getUserId(req), body.avatar ?? null, refId);
+  }
 }

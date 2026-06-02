@@ -113,6 +113,22 @@ export class AuthService {
     }
   }
 
+  async updateAvatar(userId: number, avatar: string | null, refId: string) {
+    this.logger.debug(`[SERVICE] updateAvatar`, refId);
+    try {
+      const user = await this.userService.findOneById(userId);
+      if (!user) {
+        throw new HttpException('Пользователь не найден', HttpStatus.NOT_FOUND);
+      }
+      const updated = await this.userService.updateAvatar(user, avatar);
+      this.logger.debug(`[SERVICE] updateAvatar SUCCESS`, refId);
+      return this.userService.toSafeUser(updated);
+    } catch (error) {
+      this.logger.error(`[SERVICE] updateAvatar failed: ${error}`, refId);
+      throw error;
+    }
+  }
+
   async changePassword(
     userId: number,
     currentPassword: string,

@@ -101,6 +101,11 @@ export class UserService {
     return this.userRepository.save(user);
   }
 
+  async updateAvatar(user: UserEntity, avatar: string | null): Promise<UserEntity> {
+    user.avatar = avatar;
+    return this.userRepository.save(user);
+  }
+
   async updatePassword(user: UserEntity, password: string): Promise<UserEntity> {
     user.password = password;
     return this.userRepository.save(user);

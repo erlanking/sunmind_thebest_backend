@@ -30,6 +30,11 @@ export class PanelController {
     return this.panelService.getPanelsForDevice(deviceId, this.getUserId(req));
   }
 
+  @Post('device/:deviceId/ensure')
+  async ensureForDevice(@Req() req, @Param('deviceId') deviceId: string) {
+    return this.panelService.ensurePanelsForDevice(deviceId, this.getUserId(req));
+  }
+
   @Patch(':panelId')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async update(

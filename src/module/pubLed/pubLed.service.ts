@@ -426,6 +426,7 @@ export class PubLedService implements OnModuleInit, OnModuleDestroy {
     panelIndex: number,
     state?: boolean,
     brightness?: number,
+    mode?: string,
   ): Promise<void> {
     await this.ensureConnected();
     const suffix = panelIndex === 0 ? '' : '2';
@@ -443,6 +444,14 @@ export class PubLedService implements OnModuleInit, OnModuleDestroy {
       this.client.publish(topic, String(brightness), { qos: 1 }, (err) => {
         if (err) this.logger.error(`Ошибка panel brightness${suffix}:`, err.message);
         else this.logger.log(`✅ panel brightness ${brightness} → ${topic}`);
+      });
+    }
+
+    if (mode !== undefined) {
+      const topic = `home/${deviceId}/mode${suffix}`;
+      this.client.publish(topic, mode, { qos: 1 }, (err) => {
+        if (err) this.logger.error(`Ошибка panel mode${suffix}:`, err.message);
+        else this.logger.log(`✅ panel mode ${mode} → ${topic}`);
       });
     }
   }

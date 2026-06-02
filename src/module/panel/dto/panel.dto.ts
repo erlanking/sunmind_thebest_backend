@@ -20,6 +20,10 @@ export class PanelControlDto {
   @Min(0)
   @Max(255)
   brightness?: number;
+
+  @IsOptional()
+  @IsString()
+  mode?: string;
 }
 
 export class AssignPanelsDto {
