@@ -478,7 +478,7 @@ input:focus{outline:none;border-color:#f6c343}
 </div>
 
 <script>
-let BASE_URL = localStorage.getItem('admin_server') || 'https://sunmindthebestbackend-production.up.railway.app';
+let BASE_URL = localStorage.getItem('admin_server') || 'https://sunmind-backend-production.up.railway.app';
 let token = localStorage.getItem('admin_token');
 
 function selectServer(btn, url) {
