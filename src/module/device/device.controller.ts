@@ -121,10 +121,13 @@ export class DeviceController {
       } else {
         await this.pubLedService.turnOff(deviceId);
       }
+      // Управляем Панелью 2 тем же состоянием
+      await this.pubLedService.controlPanel(deviceId, 1, on);
     } else if ('brightness' in body) {
       await this.pubLedService.setMode('manual', deviceId);
       await new Promise((r) => setTimeout(r, 150));
       await this.pubLedService.setBrightness(Number(body['brightness']), deviceId);
+      await this.pubLedService.controlPanel(deviceId, 1, undefined, Number(body['brightness']));
     } else if ('manual_mode' in body || 'manualMode' in body || 'mode' in body) {
       const mode = (body['mode'] as string) ?? ((body['manual_mode'] ?? body['manualMode']) ? 'manual' : 'auto');
       await this.pubLedService.setMode(mode as 'manual' | 'auto', deviceId);
@@ -353,5 +356,15 @@ export class DeviceController {
       body.endHour,
       body.endMinute,
     );
+  }
+
+  @Get('devices/:deviceId/weather')
+  @UseGuards(JwtAuthGuard as any)
+  @ApiOperation({ summary: 'Прогноз облачности для солнечной зарядки' })
+  async getWeatherForecast(
+    @Req() req,
+    @Param('deviceId') deviceId: string,
+  ) {
+    return this.deviceService.getWeatherForecast(deviceId, this.getUserId(req));
   }
 }

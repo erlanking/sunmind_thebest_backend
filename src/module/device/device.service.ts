@@ -674,6 +674,34 @@ export class DeviceService {
     };
   }
 
+  async getWeatherForecast(deviceId: string, userId: number) {
+    const device = await this.getOwnedDeviceOrFail(deviceId, userId);
+    const lat = device.latitude;
+    const lon = device.longitude;
+
+    if (!lat || !lon) {
+      throw new HttpException(
+        'Местоположение устройства не задано',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=cloudcover_mean&timezone=auto&forecast_days=2`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new HttpException('Ошибка получения погоды', HttpStatus.BAD_GATEWAY);
+    }
+    const data: any = await res.json();
+    const daily = data.daily;
+    const todayCloud    = Math.round(daily.cloudcover_mean[0] ?? 0);
+    const tomorrowCloud = Math.round(daily.cloudcover_mean[1] ?? 0);
+
+    return {
+      today:    { cloudcover: todayCloud },
+      tomorrow: { cloudcover: tomorrowCloud, willCharge: tomorrowCloud >= 70 },
+    };
+  }
+
   private normalizeOptionalName(name?: string | null): string | null {
     const normalizedName = name?.trim();
     return normalizedName ? normalizedName : null;
