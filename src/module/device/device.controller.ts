@@ -346,7 +346,7 @@ export class DeviceController {
   async setNightGuardSchedule(
     @Req() req,
     @Param('deviceId') deviceId: string,
-    @Body() body: { startHour: number; startMinute: number; endHour: number; endMinute: number },
+    @Body() body: { startHour: number; startMinute: number; endHour: number; endMinute: number; timezoneOffsetMinutes?: number },
   ) {
     return this.deviceService.setNightGuardSchedule(
       deviceId,
@@ -355,6 +355,7 @@ export class DeviceController {
       body.startMinute,
       body.endHour,
       body.endMinute,
+      body.timezoneOffsetMinutes,
     );
   }
 

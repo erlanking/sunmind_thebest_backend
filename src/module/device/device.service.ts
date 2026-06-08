@@ -654,13 +654,15 @@ export class DeviceService {
     startMinute: number,
     endHour: number,
     endMinute: number,
+    timezoneOffsetMinutes?: number,
   ): Promise<DeviceStatusResponseDto> {
     const device = await this.getOwnedDeviceOrFail(deviceId, userId);
     device.nightGuardStartHour = startHour;
     device.nightGuardStartMinute = startMinute;
     device.nightGuardEndHour = endHour;
     device.nightGuardEndMinute = endMinute;
-    device.nightGuardEnabled = true; // автоматически включаем при настройке
+    if (timezoneOffsetMinutes !== undefined) device.nightGuardTzOffset = timezoneOffsetMinutes;
+    device.nightGuardEnabled = true;
     await this.deviceRepository.save(device);
     return this.mapStatus(device);
   }

@@ -73,6 +73,10 @@ export class DeviceEntity {
   @Column({ name: 'night_guard_end_minute', type: 'int', default: 0 })
   nightGuardEndMinute!: number;
 
+  // UTC offset in minutes (e.g. UTC+6 = 360). Used to convert stored local hours to server UTC for comparison.
+  @Column({ name: 'night_guard_tz_offset', type: 'int', default: 0 })
+  nightGuardTzOffset!: number;
+
   @Column({ name: 'power_source', type: 'varchar', length: 10, default: 'battery' })
   powerSource!: string; // 'battery' | 'ac'
 

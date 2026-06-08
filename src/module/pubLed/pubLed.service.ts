@@ -147,8 +147,11 @@ export class PubLedService implements OnModuleInit, OnModuleDestroy {
   }
 
   private subscribeToTopics(): void {
-    // Подписываемся на все нужные топики + телеметрия
-    const topics = [...Object.values(this.topics), this.telemetryTopic];
+    const topics = [
+      ...Object.values(this.topics),
+      this.telemetryTopic,
+      'home/+/status',  // wildcard — catches status from all devices (e.g. home/SMP-0002/status)
+    ];
 
     topics.forEach((topic) => {
       this.client.subscribe(topic, { qos: 1 }, (err) => {
@@ -170,12 +173,42 @@ export class PubLedService implements OnModuleInit, OnModuleDestroy {
         return;
       }
 
+      // Device-specific status topic: home/<deviceId>/status
+      const statusMatch = topic.match(/^home\/([^/]+)\/status$/);
+      if (statusMatch) {
+        const deviceId = statusMatch[1];
+        this.logger.debug(`Статус от ${deviceId}: ${messageStr}`);
+        this.parseStatusMessage(messageStr);
+        this.processDeviceStatus(deviceId, messageStr);
+        return;
+      }
+
       if (topic === this.topics.status) {
         this.logger.debug(`Получен статус: ${messageStr}`);
         this.parseStatusMessage(messageStr);
       }
     } catch (err: any) {
       this.logger.error('Ошибка обработки сообщения:', err.message);
+    }
+  }
+
+  private async processDeviceStatus(deviceId: string, message: string): Promise<void> {
+    try {
+      const data = JSON.parse(message);
+      // ESP32 status uses motion_active; only process when present
+      if (data.motion_active === undefined) return;
+      await this.deviceService.saveTelemetry({
+        deviceId,
+        motion: data.motion_active ?? false,
+        brightness: data.brightness ?? 0,
+        lux: data.lux ?? 0,
+        batteryPercent: data.battery_percent ?? null,
+        manualMode: data.mode === 'manual',
+        latitude: null,
+        longitude: null,
+      } as any);
+    } catch {
+      // Non-JSON status or missing fields — not an error
     }
   }
 

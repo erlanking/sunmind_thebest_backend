@@ -190,8 +190,12 @@ export class DeviceAlertService {
   }
 
   private isInNightGuardWindow(device: DeviceEntity): boolean {
-    const now = new Date();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    // Convert UTC server time to device's local time using stored timezone offset
+    const tzOffset = device.nightGuardTzOffset ?? 0; // minutes, e.g. UTC+6 = 360
+    const localMs = Date.now() + tzOffset * 60 * 1000;
+    const localDate = new Date(localMs);
+    const currentMinutes = localDate.getUTCHours() * 60 + localDate.getUTCMinutes();
+
     const startH = device.nightGuardStartHour ?? 22;
     const startM = device.nightGuardStartMinute ?? 0;
     const endH = device.nightGuardEndHour ?? 6;
