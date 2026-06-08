@@ -696,9 +696,14 @@ export class DeviceService {
     const todayCloud    = Math.round(daily.cloudcover_mean[0] ?? 0);
     const tomorrowCloud = Math.round(daily.cloudcover_mean[1] ?? 0);
 
+    const cloudDesc = (pct: number) =>
+      pct <= 20 ? 'Солнечно' :
+      pct <= 50 ? 'Переменная облачность' :
+      pct <= 80 ? 'Облачно' : 'Пасмурно';
+
     return {
-      today:    { cloudcover: todayCloud },
-      tomorrow: { cloudcover: tomorrowCloud, willCharge: tomorrowCloud >= 70 },
+      today:    { cloudcover: todayCloud,    description: cloudDesc(todayCloud) },
+      tomorrow: { cloudcover: tomorrowCloud, description: cloudDesc(tomorrowCloud), willCharge: tomorrowCloud <= 30 },
     };
   }
 
