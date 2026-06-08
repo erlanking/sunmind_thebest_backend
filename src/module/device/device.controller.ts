@@ -15,6 +15,8 @@ import {
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { DeviceService } from './device.service';
 import { PubLedService } from '../pubLed/pubLed.service';
+import { NotificationService } from '../admin/notification.service';
+import { DeviceAlertService } from './device-alert.service';
 import { DeviceDataDto } from './dto/device-data.dto';
 import {
   DeviceScheduleDto,
@@ -37,6 +39,8 @@ export class DeviceController {
   constructor(
     private readonly deviceService: DeviceService,
     private readonly pubLedService: PubLedService,
+    private readonly notificationService: NotificationService,
+    private readonly alertService: DeviceAlertService,
   ) {}
 
   private getUserId(req: any): number {
@@ -367,5 +371,28 @@ export class DeviceController {
     @Param('deviceId') deviceId: string,
   ) {
     return this.deviceService.getWeatherForecast(deviceId, this.getUserId(req));
+  }
+
+  @Post('devices/:deviceId/test-notification')
+  @UseGuards(JwtAuthGuard as any)
+  @ApiOperation({ summary: 'Тест: отправить уведомление напрямую пользователю' })
+  async testNotification(
+    @Req() req,
+    @Param('deviceId') deviceId: string,
+  ) {
+    const userId = this.getUserId(req);
+    const device = await this.deviceService.getStatus(deviceId, userId);
+    const now = new Date();
+    const result = await this.notificationService.sendToUser(
+      userId,
+      '🔔 Тест охранного режима',
+      `Устройство ${deviceId} — тест уведомления в ${now.toLocaleTimeString('ru')}`,
+    );
+    return {
+      result,
+      nightGuardEnabled: device.nightGuardEnabled,
+      nightGuardWindow: `${String(device.nightGuardStartHour).padStart(2,'0')}:${String(device.nightGuardStartMinute).padStart(2,'0')} – ${String(device.nightGuardEndHour).padStart(2,'0')}:${String(device.nightGuardEndMinute).padStart(2,'0')}`,
+      serverUtcTime: now.toISOString(),
+    };
   }
 }
