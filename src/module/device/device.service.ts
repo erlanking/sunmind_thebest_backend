@@ -150,6 +150,10 @@ export class DeviceService {
       }
     }
 
+    if (dto.latitude !== undefined) device.latitude = dto.latitude;
+    if (dto.longitude !== undefined) device.longitude = dto.longitude;
+    if (dto.icon !== undefined) device.icon = dto.icon;
+
     await this.deviceRepository.save(device);
 
     return this.getOwnedDeviceOrFail(deviceId, userId, true);
