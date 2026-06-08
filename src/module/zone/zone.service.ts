@@ -243,17 +243,26 @@ export class ZoneService {
 
     await this.deviceRepository.save(devicesToSave);
 
-    // Send MQTT commands to physical devices
+    // Send MQTT commands to physical devices (both panels)
     for (const device of devicesToSave) {
       try {
         if (dto.state !== undefined) {
+          await this.pubLedService.setMode('manual', device.deviceId);
+          await this.pubLedService.controlPanel(device.deviceId, 1, undefined, undefined, 'manual');
+          await new Promise((r) => setTimeout(r, 150));
           if (dto.state) {
             await this.pubLedService.turnOn(device.deviceId);
+            await this.pubLedService.controlPanel(device.deviceId, 1, true);
           } else {
             await this.pubLedService.turnOff(device.deviceId);
+            await this.pubLedService.controlPanel(device.deviceId, 1, false);
           }
         } else if (dto.brightness !== undefined) {
+          await this.pubLedService.setMode('manual', device.deviceId);
+          await this.pubLedService.controlPanel(device.deviceId, 1, undefined, undefined, 'manual');
+          await new Promise((r) => setTimeout(r, 150));
           await this.pubLedService.setBrightness(dto.brightness, device.deviceId);
+          await this.pubLedService.controlPanel(device.deviceId, 1, undefined, dto.brightness);
         }
       } catch (_) {
         // Don't fail the whole request if MQTT is unavailable

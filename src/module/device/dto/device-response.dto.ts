@@ -31,6 +31,8 @@ export class DeviceStatusResponseDto {
   batteryMode?: string; // 'manual' | 'auto'
   chargeStartThreshold?: number;
   chargeStopThreshold?: number;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export class DeviceScheduleDto {

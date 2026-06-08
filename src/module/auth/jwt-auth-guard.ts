@@ -1,4 +1,4 @@
-import { ExecutionContext, Injectable } from '@nestjs/common';
+import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 
@@ -17,9 +17,14 @@ export class JwtAuthGuard {
     const request = context.switchToHttp().getRequest();
     const authHeader = request.headers.authorization;
     const token = authHeader && authHeader.split(' ')[1];
-    if (!token) return false;
+    if (!token) throw new UnauthorizedException('Токен не передан');
 
-    const user = this.jwtService.verify(token);
+    let user: any;
+    try {
+      user = this.jwtService.verify(token);
+    } catch {
+      throw new UnauthorizedException('Токен недействителен');
+    }
     request.user = user;
 
     if (!requireRoles) {

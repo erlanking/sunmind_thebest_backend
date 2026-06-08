@@ -547,6 +547,8 @@ export class DeviceService {
       batteryMode: device.batteryMode ?? 'manual',
       chargeStartThreshold: device.chargeStartThreshold ?? 20,
       chargeStopThreshold: device.chargeStopThreshold ?? 90,
+      latitude: device.latitude ?? null,
+      longitude: device.longitude ?? null,
     };
   }
 

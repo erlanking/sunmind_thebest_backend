@@ -434,6 +434,7 @@ input:focus{outline:none;border-color:#f6c343}
         <div class="section" id="tab-map">
           <div class="page-header">
             <h2>Карта устройств</h2>
+            <span id="mapLastUpdated" style="font-size:12px;color:#858a95;margin-left:auto;margin-right:12px"></span>
             <button class="refresh-btn" onclick="loadMap()">&#8635; Обновить</button>
           </div>
           <div class="map-legend">
@@ -530,7 +531,7 @@ function showPanel() {
   loadStats(); loadDevices();
 }
 
-function logout() { localStorage.removeItem('admin_token'); location.reload(); }
+function logout() { stopMapPolling(); localStorage.removeItem('admin_token'); location.reload(); }
 
 function showTab(name) {
   document.querySelectorAll('.nav-item').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
@@ -541,7 +542,7 @@ function showTab(name) {
   if (name === 'unowned') loadUnowned();
   if (name === 'analytics') loadAnalytics();
   if (name === 'notify') initNotify();
-  if (name === 'map') loadMap();
+  if (name === 'map') { loadMap(); startMapPolling(); } else stopMapPolling();
 }
 
 async function api(path) {
@@ -937,6 +938,7 @@ let mapInstance = null;
 let mapDevices = [];
 let mapMarkers = {};
 let placingDeviceId = null;
+let mapRefreshInterval = null;
 
 function makeIcon(color, pulse, emoji) {
   const ring = pulse ? \`<div style="position:absolute;inset:0;border-radius:50%;background:\${color};opacity:.3;animation:mpulse 1.5s ease-in-out infinite"></div>\` : '';
@@ -1113,6 +1115,49 @@ async function loadMap() {
   });
 
   renderDeviceCards();
+}
+
+function startMapPolling() {
+  stopMapPolling();
+  mapRefreshInterval = setInterval(softRefreshMap, 30000);
+}
+
+function stopMapPolling() {
+  if (mapRefreshInterval) { clearInterval(mapRefreshInterval); mapRefreshInterval = null; }
+}
+
+async function softRefreshMap() {
+  const data = await api('/admin/devices');
+  if (!data || !mapInstance) return;
+  data.forEach(d => {
+    if (d.icon) { iconCache[d.deviceId] = d.icon; saveIconCache(); }
+    else if (iconCache[d.deviceId]) { d.icon = iconCache[d.deviceId]; }
+  });
+  mapDevices = data;
+  data.forEach(d => {
+    if (d.latitude == null || d.longitude == null) return;
+    if (mapMarkers[d.deviceId]) {
+      mapMarkers[d.deviceId].setLatLng([d.latitude, d.longitude]);
+      mapMarkers[d.deviceId].setIcon(deviceIcon(d));
+    } else {
+      const bat = d.batteryPercent != null ? d.batteryPercent + '%' : '—';
+      const status = d.online
+        ? '<span style="color:#4ade80;font-weight:700">● Онлайн</span>'
+        : '<span style="color:#f87171;font-weight:700">● Офлайн</span>';
+      const popup = \`<div style="font-family:-apple-system,sans-serif;min-width:180px">
+        <div style="font-size:14px;font-weight:700;margin-bottom:5px">\${d.name || d.deviceId}</div>
+        <div style="font-size:12px;color:#555;margin-bottom:3px">ID: \${d.deviceId}</div>
+        <div style="font-size:12px;margin-bottom:2px">\${status}</div>
+        <div style="font-size:12px;color:#555">АКБ: \${bat}</div>
+        <div style="font-size:11px;color:#999;margin-top:4px">\${d.latitude.toFixed(5)}, \${d.longitude.toFixed(5)}</div>
+      </div>\`;
+      mapMarkers[d.deviceId] = L.marker([d.latitude, d.longitude], { icon: deviceIcon(d) })
+        .addTo(mapInstance).bindPopup(popup);
+    }
+  });
+  renderDeviceCards();
+  const lbl = document.getElementById('mapLastUpdated');
+  if (lbl) lbl.textContent = 'Обновлено: ' + new Date().toLocaleTimeString('ru');
 }
 
 // ── Location modal ───────────────────────────────────────────────────────────

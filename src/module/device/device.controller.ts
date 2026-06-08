@@ -114,12 +114,16 @@ export class DeviceController {
     if ('state' in body || 'on' in body || 'ledState' in body || 'led_state' in body) {
       const raw = body['state'] ?? body['on'] ?? body['ledState'] ?? body['led_state'];
       const on = raw === true || raw === 'ON' || raw === 'on' || raw === 1;
+      await this.pubLedService.setMode('manual', deviceId);
+      await new Promise((r) => setTimeout(r, 150));
       if (on) {
         await this.pubLedService.turnOn(deviceId);
       } else {
         await this.pubLedService.turnOff(deviceId);
       }
     } else if ('brightness' in body) {
+      await this.pubLedService.setMode('manual', deviceId);
+      await new Promise((r) => setTimeout(r, 150));
       await this.pubLedService.setBrightness(Number(body['brightness']), deviceId);
     } else if ('manual_mode' in body || 'manualMode' in body || 'mode' in body) {
       const mode = (body['mode'] as string) ?? ((body['manual_mode'] ?? body['manualMode']) ? 'manual' : 'auto');
